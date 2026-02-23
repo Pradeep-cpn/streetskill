@@ -31,5 +31,5 @@ RUN chmod -R 777 storage bootstrap/cache
 EXPOSE 10000
 
 # Render provides $PORT; fall back to 10000 for local runs.
-# Make migrations non-blocking so the app can boot even if DB is temporarily unreachable.
-CMD php artisan migrate --force || true && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}
+# Run the web server; run migrations manually from Render shell when needed.
+CMD php artisan serve --host=0.0.0.0 --port=${PORT:-10000}

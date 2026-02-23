@@ -7,6 +7,7 @@ use App\Models\Report;
 use App\Models\SwapRequest;
 use App\Support\AdminPolicy;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -19,6 +20,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        if (app()->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         View::composer('layouts.app', function ($view) {
             $pendingCount = 0;
             $unreadMessageCount = 0;

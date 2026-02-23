@@ -1,5 +1,7 @@
 FROM php:8.2-cli
 
+ENV PORT=10000
+
 RUN apt-get update && apt-get install -y \
     git curl zip unzip \
     libonig-dev libxml2-dev libzip-dev \

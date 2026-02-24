@@ -73,7 +73,7 @@ class OtpRegisterController extends Controller
         $request->session()->put('register.email', $email);
         $request->session()->put('register.name', $name);
 
-        return redirect()->route('register.verify')->with('success', 'OTP sent to your email.');
+        return redirect()->route('register.verify')->with('success', 'OTP sent successfully — check spam too.');
     }
 
     public function resendOtp(Request $request)
@@ -112,7 +112,7 @@ class OtpRegisterController extends Controller
         }
         RateLimiter::hit($rateKey, 60);
 
-        return back()->with('success', 'OTP resent to your email.');
+        return back()->with('success', 'OTP resent successfully — check spam too.');
     }
 
     public function showVerifyForm(Request $request)

@@ -50,13 +50,25 @@
                 </form>
             @endif
             <div class="d-flex flex-wrap gap-2">
+                @if($user->email_verified_at)
+                    <span class="badge-pill">Email Verified</span>
+                @endif
                 @if($user->verified_badge)
                     <span class="badge-pill">{{ ucwords(str_replace('_', ' ', $user->verified_badge)) }}</span>
+                @endif
+                @if(!empty($profile?->availability_status))
+                    <span class="badge-pill">{{ ucfirst($profile->availability_status) }}</span>
                 @endif
                 <span class="badge-pill">{{ number_format((float) $user->rating, 1) }} ★</span>
                 <span class="badge-pill">{{ $completedSwaps }} swaps</span>
                 @if($user->city)
                     <span class="badge-pill">{{ $user->city }}</span>
+                @endif
+            </div>
+            <div class="mt-2 d-flex flex-wrap gap-2">
+                <span class="small text-muted">Profile completion: {{ $metrics['completion'] ?? 0 }}%</span>
+                @if($user->last_active_at)
+                    <span class="small text-muted">Last active {{ $user->last_active_at->diffForHumans() }}</span>
                 @endif
             </div>
         </div>
@@ -160,6 +172,18 @@
                 $learnSkills = \App\Support\SkillMatchEngine::parseSkills($user->skills_wanted);
             @endphp
             <div class="mb-3">
+                <p class="small mb-2"><strong>Skill tags</strong></p>
+                @if(!empty($profile?->skill_tags))
+                    <div class="spotlight-skills">
+                        @foreach($profile->skill_tags as $tag)
+                            <span class="skill-chip">{{ ucfirst($tag) }}</span>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="small mb-0">Not listed yet.</p>
+                @endif
+            </div>
+            <div class="mb-3">
                 <p class="small mb-2"><strong>Teaches</strong></p>
                 @if(!empty($teachSkills))
                     <div class="spotlight-skills">
@@ -187,7 +211,15 @@
     </div>
     <div class="col-lg-6 d-flex">
         <article class="card p-4 w-100">
-            <h2 class="h5 mb-3">Portfolio</h2>
+            <h2 class="h5 mb-3">Pricing & Portfolio</h2>
+            <div class="mb-3">
+                <p class="small mb-2"><strong>Price range</strong></p>
+                @if($profile?->price_min || $profile?->price_max)
+                    <p class="small mb-0">Rs {{ $profile->price_min ?? 'N/A' }} to Rs {{ $profile->price_max ?? 'N/A' }} per session</p>
+                @else
+                    <p class="small mb-0">Not set yet.</p>
+                @endif
+            </div>
             @if(!empty($user->portfolio_links))
                 <ul class="feature-list mb-0">
                     @foreach($user->portfolio_links as $link)
@@ -200,6 +232,60 @@
         </article>
     </div>
 </section>
+
+<section class="card p-4 p-md-5 mb-4">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <h2 class="h5 mb-0">Rating Breakdown</h2>
+        <span class="results-pill">{{ $totalRatings }} reviews</span>
+    </div>
+    @if($totalRatings === 0)
+        <p class="small mb-0">No ratings yet.</p>
+    @else
+        <div class="rating-breakdown">
+            @foreach($ratingBreakdown as $row)
+                @php
+                    $percent = $totalRatings > 0 ? (int) round(($row['count'] / $totalRatings) * 100) : 0;
+                @endphp
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <span class="small" style="width: 48px;">{{ $row['star'] }}★</span>
+                    <div class="progress flex-grow-1" style="height: 6px;">
+                        <div class="progress-bar" role="progressbar" style="width: {{ $percent }}%"></div>
+                    </div>
+                    <span class="small text-muted" style="width: 40px;">{{ $row['count'] }}</span>
+                </div>
+            @endforeach
+        </div>
+    @endif
+</section>
+
+@if(isset($skillRatings) && $skillRatings->isNotEmpty())
+    <section class="card p-4 p-md-5 mb-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <h2 class="h5 mb-0">Skill Ratings</h2>
+            <span class="results-pill">Verified</span>
+        </div>
+        <div class="row g-3">
+            @foreach($skillRatings as $row)
+                <div class="col-md-4 d-flex">
+                    <div class="card p-3 w-100">
+                        <strong>{{ ucfirst($row->skill) }}</strong>
+                        <div class="rating-stars small">
+                            @for ($i = 1; $i <= 5; $i++)
+                                @if($i <= round((float) $row->avg_rating))
+                                    ★
+                                @else
+                                    ☆
+                                @endif
+                            @endfor
+                            <span class="rating-value">{{ number_format((float) $row->avg_rating, 1) }}</span>
+                        </div>
+                        <small class="text-muted">{{ (int) $row->count }} reviews</small>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </section>
+@endif
 
 <section class="card p-4 p-md-5 mb-4">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
@@ -251,6 +337,45 @@
         @endif
     </div>
 </section>
+
+@if($user->slug && auth()->check() && auth()->id() !== $user->id)
+    <section class="card p-4 p-md-5 mb-4">
+        <h2 class="h5 mb-3">Safety & Trust</h2>
+        <form method="POST" action="{{ route('reports.store') }}" class="mb-3">
+            @csrf
+            <input type="hidden" name="reported_user_id" value="{{ $user->id }}">
+            <div class="row g-2">
+                <div class="col-md-8">
+                    <input type="text" name="details" class="form-control form-control-sm" placeholder="Optional details">
+                </div>
+                <div class="col-md-4">
+                    <select name="reason" class="form-control form-control-sm" required>
+                        <option value="">Report reason</option>
+                        <option value="spam">Spam</option>
+                        <option value="abuse">Abuse</option>
+                        <option value="no_show">No Show</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-outline-light btn-sm mt-2">Report User</button>
+        </form>
+
+        @if($isBlocked)
+            <form method="POST" action="{{ route('blocks.destroy', $user) }}">
+                @csrf
+                @method('DELETE')
+                <button class="btn btn-glow btn-sm">Unblock User</button>
+            </form>
+        @else
+            <form method="POST" action="{{ route('blocks.store') }}">
+                @csrf
+                <input type="hidden" name="blocked_user_id" value="{{ $user->id }}">
+                <button class="btn btn-outline-light btn-sm">Block User</button>
+            </form>
+        @endif
+    </section>
+@endif
 
 <section class="card p-4 p-md-5 mb-4">
     <h2 class="h5 mb-3">Location Tags (24h)</h2>

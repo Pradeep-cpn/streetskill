@@ -8,6 +8,7 @@ use Illuminate\Validation\Rule;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Hash;
 use App\Support\PasswordRules;
+use App\Support\ProfileMetrics;
 
 class ProfileController extends Controller
 {
@@ -31,6 +32,7 @@ class ProfileController extends Controller
     public function edit()
     {
         $user = Auth::user();
+        $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
         $availabilityOptions = self::AVAILABILITY_OPTIONS;
 
         if (empty($user->slug)) {
@@ -95,8 +97,11 @@ class ProfileController extends Controller
             $activityTypes = [];
         }
 
+        $metrics = ProfileMetrics::completion($user, $profile);
+
         return view('profile.edit', compact(
             'user',
+            'profile',
             'availabilityOptions',
             'activityLogs',
             'acceptedSwaps',
@@ -105,7 +110,8 @@ class ProfileController extends Controller
             'activityType',
             'activityFrom',
             'activityTo',
-            'activityTypes'
+            'activityTypes',
+            'metrics'
         ));
     }
 
@@ -119,12 +125,22 @@ class ProfileController extends Controller
             'skills_wanted' => 'nullable|string|max:2000',
             'availability_slots' => 'nullable|array',
             'availability_slots.*' => ['string', Rule::in(self::AVAILABILITY_OPTIONS)],
+            'skill_tags' => 'nullable|string|max:2000',
+            'price_min' => 'nullable|integer|min:0',
+            'price_max' => 'nullable|integer|min:0',
+            'availability_status' => ['nullable', 'string', 'max:32', Rule::in(['available', 'busy', 'away'])],
             'portfolio_links' => 'nullable|string|max:2000',
             'website_url' => 'nullable|url|max:255',
             'linkedin_url' => 'nullable|url|max:255',
             'instagram_url' => 'nullable|url|max:255',
             'youtube_url' => 'nullable|url|max:255',
         ]);
+
+        if ($request->filled('price_min') && $request->filled('price_max')) {
+            if ((int) $request->price_max < (int) $request->price_min) {
+                return back()->with('error', 'Price max must be greater than or equal to price min.');
+            }
+        }
 
         $user = Auth::user();
 
@@ -145,6 +161,20 @@ class ProfileController extends Controller
         $user->youtube_url = $request->youtube_url;
 
         $user->save();
+
+        $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
+        $skillTags = collect(preg_split('/[,\n]+/', (string) $request->skill_tags) ?: [])
+            ->map(fn ($tag) => mb_strtolower(trim((string) $tag), 'UTF-8'))
+            ->filter()
+            ->values()
+            ->all();
+        $profile->fill([
+            'skill_tags' => $skillTags,
+            'price_min' => $request->price_min,
+            'price_max' => $request->price_max,
+            'availability_status' => $request->availability_status ?: $profile->availability_status,
+        ]);
+        $profile->save();
 
         if (ActivityLog::enabled()) {
             ActivityLog::create([

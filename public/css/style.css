@@ -160,6 +160,14 @@ a {
     padding-bottom: 84px;
 }
 
+.content-chat {
+    padding-bottom: 20px;
+}
+
+.content-chat .chat-shell {
+    height: calc(100vh - 180px);
+}
+
 .app-alert {
     border: 0;
     border-radius: 14px;
@@ -907,6 +915,9 @@ select.form-control:focus {
 
 .chat-shell {
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 200px);
 }
 
 .chat-header {
@@ -915,15 +926,32 @@ select.form-control:focus {
 }
 
 .chat-box {
-    height: 420px;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    padding-right: 4px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(8, 12, 28, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .chat-input {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 10px;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.chat-input .form-control {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #fff;
+}
+
+.chat-input .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .message {
@@ -934,6 +962,7 @@ select.form-control:focus {
     margin-bottom: 10px;
     color: #fff;
     word-break: break-word;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
 .sent {
@@ -1039,6 +1068,14 @@ select.form-control:focus {
         padding-bottom: 94px;
     }
 
+    .content-chat {
+        padding-bottom: 20px;
+    }
+
+    .content-chat .chat-shell {
+        height: calc(100vh - 160px);
+    }
+
     .mobile-drawer {
         background: rgba(9, 13, 30, 0.96);
         color: #fff;
@@ -1094,7 +1131,7 @@ select.form-control:focus {
     }
 
     .chat-box {
-        height: 340px;
+        flex: 1;
     }
 
     .chat-input {

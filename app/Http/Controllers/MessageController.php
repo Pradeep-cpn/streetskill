@@ -3,12 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Message;
+use App\Models\Notification;
 use App\Models\SwapRequest;
 use App\Models\User;
 use App\Models\ActivityLog;
+use App\Models\UserBlock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 
 class MessageController extends Controller
 {
@@ -62,7 +67,8 @@ class MessageController extends Controller
     {
         $request->validate([
             'to_user_id' => 'required|exists:users,id',
-            'message' => 'required|string|max:1000',
+            'message' => 'nullable|string|max:1000',
+            'image' => 'nullable|image|max:4096',
         ]);
 
         $rateKey = 'chat-message:' . Auth::id();
@@ -85,11 +91,45 @@ class MessageController extends Controller
             return response()->json(['error' => 'Chat is allowed only after an accepted swap.'], 403);
         }
 
+        $messageBody = trim((string) $request->message);
+        $image = $request->file('image');
+
+        if ($messageBody === '' && !$image) {
+            return response()->json(['error' => 'Message is empty.'], 422);
+        }
+
+        $imagePath = null;
+        $imageMime = null;
+        $imageSize = null;
+        $messageType = 'text';
+
+        if ($image) {
+            $imagePath = $image->store('chat', 'public');
+            $imageMime = $image->getMimeType();
+            $imageSize = $image->getSize();
+            $messageType = $messageBody === '' ? 'image' : 'image+text';
+        }
+
         $message = Message::create([
             'from_user_id' => auth()->id(),
             'to_user_id' => $request->to_user_id,
-            'message' => trim((string) $request->message),
+            'message' => $messageBody,
+            'message_type' => $messageType,
+            'image_path' => $imagePath,
+            'image_mime' => $imageMime,
+            'image_size' => $imageSize,
         ]);
+
+        if (Schema::hasTable('notifications')) {
+            Notification::create([
+                'user_id' => (int) $request->to_user_id,
+                'type' => 'message_received',
+                'data' => [
+                    'from_user_id' => auth()->id(),
+                    'from_name' => auth()->user()?->name,
+                ],
+            ]);
+        }
 
         RateLimiter::hit($rateKey, 60);
 
@@ -119,7 +159,7 @@ class MessageController extends Controller
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
-        return Message::where(function ($q) use ($id) {
+        $messages = Message::where(function ($q) use ($id) {
                 $q->where('from_user_id', Auth::id())
                     ->where('to_user_id', $id);
             })
@@ -128,11 +168,60 @@ class MessageController extends Controller
                     ->where('to_user_id', Auth::id());
             })
             ->orderBy('created_at', 'asc')
-            ->get();
+            ->get()
+            ->map(function (Message $message) {
+                return [
+                    'id' => $message->id,
+                    'from_user_id' => $message->from_user_id,
+                    'to_user_id' => $message->to_user_id,
+                    'message' => $message->message,
+                    'message_type' => $message->message_type,
+                    'image_url' => $message->image_path ? Storage::disk('public')->url($message->image_path) : null,
+                    'read_at' => $message->read_at?->toISOString(),
+                    'created_at' => $message->created_at?->toISOString(),
+                ];
+            });
+
+        $typingKey = $this->typingKey(Auth::id(), (int) $id);
+        $typing = Cache::get($typingKey, false);
+        $otherUser = User::find($id);
+        $online = $otherUser?->last_active_at && $otherUser->last_active_at->gt(now()->subMinutes(5));
+
+        return response()->json([
+            'messages' => $messages,
+            'typing' => (bool) $typing,
+            'online' => (bool) $online,
+        ]);
+    }
+
+    public function typing(Request $request, $id)
+    {
+        if (!$this->canChatWith((int) $id)) {
+            return response()->json(['error' => 'Chat is allowed only after an accepted swap.'], 403);
+        }
+
+        Cache::put($this->typingKey(Auth::id(), (int) $id), true, now()->addSeconds(6));
+
+        return response()->json(['status' => 'ok']);
     }
 
     private function canChatWith(int $otherUserId): bool
     {
+        $blocked = UserBlock::query()
+            ->where(function ($query) use ($otherUserId) {
+                $query->where('blocker_user_id', Auth::id())
+                    ->where('blocked_user_id', $otherUserId);
+            })
+            ->orWhere(function ($query) use ($otherUserId) {
+                $query->where('blocker_user_id', $otherUserId)
+                    ->where('blocked_user_id', Auth::id());
+            })
+            ->exists();
+
+        if ($blocked) {
+            return false;
+        }
+
         return SwapRequest::query()
             ->where('status', 'accepted')
             ->where(function ($query) use ($otherUserId) {
@@ -145,5 +234,10 @@ class MessageController extends Controller
                 });
             })
             ->exists();
+    }
+
+    private function typingKey(int $fromUserId, int $toUserId): string
+    {
+        return 'chat:typing:' . $fromUserId . ':' . $toUserId;
     }
 }

@@ -20,6 +20,8 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\BlockController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SwapRequestController;
 use Illuminate\Support\Facades\Route;
 
@@ -102,13 +104,30 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/rate', [RatingController::class, 'store'])->name('rate.user');
     Route::post('/rate/{rating}', [RatingController::class, 'update'])->name('rate.user.update');
     Route::post('/reports', [ReportController::class, 'store'])->name('reports.store');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.readAll');
+    Route::post('/blocks', [BlockController::class, 'store'])->name('blocks.store');
+    Route::delete('/blocks/{user}', [BlockController::class, 'destroy'])->name('blocks.destroy');
 
     Route::get('/inbox', [MessageController::class, 'inbox'])->name('chat.inbox');
     Route::post('/chat/send', [MessageController::class, 'send']);
+    Route::post('/chat/typing/{id}', [MessageController::class, 'typing']);
     Route::get('/chat/fetch/{id}', [MessageController::class, 'fetch']);
     Route::get('/chat/{id}', function ($id) {
         $user = \App\Models\User::findOrFail($id);
         $currentUser = auth()->user();
+
+        $isBlocked = \App\Models\UserBlock::query()
+            ->where(function ($query) use ($currentUser, $user) {
+                $query->where('blocker_user_id', $currentUser->id)
+                    ->where('blocked_user_id', $user->id);
+            })
+            ->orWhere(function ($query) use ($currentUser, $user) {
+                $query->where('blocker_user_id', $user->id)
+                    ->where('blocked_user_id', $currentUser->id);
+            })
+            ->exists();
+
+        abort_if($isBlocked, 403);
 
         $canChat = \App\Models\SwapRequest::query()
             ->where('status', 'accepted')

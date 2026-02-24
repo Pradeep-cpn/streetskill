@@ -7,6 +7,7 @@ use App\Models\Rating;
 use App\Models\SwapRequest;
 use App\Models\User;
 use App\Support\SkillMatchEngine;
+use App\Support\ProfileMetrics;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -41,16 +42,9 @@ class HomeController extends Controller
             $myWantedSkills = SkillMatchEngine::parseSkills($currentUser->skills_wanted);
             $myAvailability = SkillMatchEngine::parseAvailability($currentUser->availability_slots);
 
-            $profileChecklist = [
-                ['label' => 'City added', 'done' => !empty($currentUser->city)],
-                ['label' => 'Bio added', 'done' => !empty($currentUser->bio)],
-                ['label' => 'Teaching skills added', 'done' => !empty($currentUser->skills_offered)],
-                ['label' => 'Learning goals added', 'done' => !empty($currentUser->skills_wanted)],
-                ['label' => 'Availability slots selected', 'done' => !empty($currentUser->availability_slots)],
-            ];
-
-            $doneCount = collect($profileChecklist)->where('done', true)->count();
-            $profileCompletion = (int) round(($doneCount / max(count($profileChecklist), 1)) * 100);
+            $metrics = ProfileMetrics::completion($currentUser);
+            $profileChecklist = $metrics['checklist'];
+            $profileCompletion = $metrics['completion'];
 
             $acceptedThisMonth = SwapRequest::query()
                 ->where('status', 'accepted')

@@ -7,66 +7,37 @@
     <div class="col-lg-8 col-xl-7">
         <section class="chat-shell card p-3 p-md-4">
             <div class="chat-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <h2 class="h5 mb-0">Chat with {{ $user->name }}</h2>
+                <div>
+                    <h2 class="h5 mb-1">Chat with {{ $user->name }}</h2>
+                    <small class="text-muted" id="chat-status">Checking status...</small>
+                </div>
                 <a href="{{ route('chat.inbox') }}" class="btn btn-glow btn-sm">Back to Inbox</a>
             </div>
 
             <div class="chat-box mt-3" id="chat-box"></div>
-
-            <div class="starter-row mt-2 mb-2">
-                <button type="button" class="starter-chip" data-message="Hi! I'd like to start our skill exchange this week.">Kickoff Message</button>
-                <button type="button" class="starter-chip" data-message="Can we schedule a session based on our shared availability slots?">Schedule Prompt</button>
-                <button type="button" class="starter-chip" data-message="I can help you with my offered skill first. What time works for you?">Offer First</button>
+            <div class="mt-2" id="chat-loading">
+                <div class="placeholder-glow mb-2">
+                    <span class="placeholder col-6"></span>
+                </div>
+                <div class="placeholder-glow mb-2">
+                    <span class="placeholder col-8"></span>
+                </div>
+                <div class="placeholder-glow">
+                    <span class="placeholder col-4"></span>
+                </div>
             </div>
+            <div class="small text-warning mt-2" id="chat-wakeup" style="display:none;">Waking server... this can take a few seconds.</div>
+            <div class="small text-danger mt-2" id="chat-error" style="display:none;">
+                Chat unavailable right now.
+                <button type="button" class="btn btn-outline-light btn-sm ms-2" id="chat-retry">Retry</button>
+            </div>
+            <div class="small text-muted mt-2" id="typing-indicator" style="display:none;">{{ $user->name }} is typing...</div>
 
             <form id="chat-form" class="chat-input mt-2" autocomplete="off">
-                <input type="text" id="message" class="form-control" placeholder="Type your message" maxlength="1000" required>
+                <input type="text" id="message" class="form-control" placeholder="Type your message" maxlength="1000">
                 <button type="submit" class="btn btn-gradient">Send</button>
             </form>
-
-            <form method="POST" action="{{ route('reports.store') }}" class="report-form mt-3">
-                @csrf
-                <input type="hidden" name="reported_user_id" value="{{ $user->id }}">
-                <div class="mb-2">
-                    <input type="text" name="details" class="form-control form-control-sm" placeholder="Optional details">
-                </div>
-                <div class="d-flex gap-2 flex-wrap">
-                    <select name="reason" class="form-control form-control-sm report-reason" required>
-                        <option value="">Report reason</option>
-                        <option value="spam">Spam</option>
-                        <option value="abuse">Abuse</option>
-                        <option value="no_show">No Show</option>
-                        <option value="other">Other</option>
-                    </select>
-                    <button class="btn btn-outline-light btn-sm">Report User</button>
-                </div>
-            </form>
         </section>
-    </div>
-    <div class="col-lg-4">
-        <div class="chat-side">
-            <div class="chat-meta">
-                <span>Trust Score</span>
-                <h3 class="h5 mb-2">{{ $user->trust_score ?? 0 }}/100</h3>
-                <div class="d-flex flex-wrap gap-1">
-                    @foreach(collect($user->badges ?? [])->take(4) as $badge)
-                        <span class="badge-pill">{{ $badge }}</span>
-                    @endforeach
-                </div>
-            </div>
-            <div class="chat-meta">
-                <span>Shared Swaps</span>
-                <h3 class="h5 mb-1">{{ $sharedSwapCount ?? 0 }}</h3>
-                <small>
-                    Last accepted:
-                    {{ $lastSwapAt ? \Illuminate\Support\Carbon::parse($lastSwapAt)->diffForHumans() : 'Not yet' }}
-                </small>
-            </div>
-            <div class="chat-meta">
-                <span>Safety</span>
-                <p class="small mb-0">Messages are monitored for abuse and spam. Report issues to keep the community clean.</p>
-            </div>
-        </div>
     </div>
 </div>
 @endsection
@@ -77,6 +48,13 @@
     const chatBox = document.getElementById('chat-box');
     const messageInput = document.getElementById('message');
     const form = document.getElementById('chat-form');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const chatStatus = document.getElementById('chat-status');
+    const chatLoading = document.getElementById('chat-loading');
+    const chatWakeup = document.getElementById('chat-wakeup');
+    const chatError = document.getElementById('chat-error');
+    const chatRetry = document.getElementById('chat-retry');
+    let firstLoad = true;
 
     function escapeHtml(str) {
         return str
@@ -88,6 +66,18 @@
     }
 
     function fetchMessages() {
+        if (firstLoad) {
+            chatLoading.style.display = 'block';
+        }
+        chatError.style.display = 'none';
+        chatWakeup.style.display = 'none';
+
+        const wakeupTimer = setTimeout(function () {
+            if (firstLoad) {
+                chatWakeup.style.display = 'block';
+            }
+        }, 1500);
+
         fetch('/chat/fetch/{{ $user->id }}')
             .then(res => {
                 if (!res.ok) {
@@ -96,17 +86,40 @@
                 return res.json();
             })
             .then(data => {
+                clearTimeout(wakeupTimer);
+                chatLoading.style.display = 'none';
+                chatWakeup.style.display = 'none';
+                firstLoad = false;
                 chatBox.innerHTML = '';
+                const messages = data.messages || [];
+                const typing = Boolean(data.typing);
+                const online = Boolean(data.online);
 
-                data.forEach(msg => {
+                typingIndicator.style.display = typing ? 'block' : 'none';
+                chatStatus.textContent = online ? 'Online now' : 'Offline';
+
+                messages.forEach(msg => {
                     const align = Number(msg.from_user_id) === Number({{ auth()->id() }}) ? 'sent' : 'received';
-                    chatBox.innerHTML += `<div class="message ${align}">${escapeHtml(msg.message)}</div>`;
+                    let body = '';
+
+                    if (msg.image_url) {
+                        body += `<img src="${msg.image_url}" alt="Shared image" style="max-width: 220px; border-radius: 10px; margin-bottom: 6px;">`;
+                    }
+                    if (msg.message) {
+                        body += `<div>${escapeHtml(msg.message)}</div>`;
+                    }
+
+                    const seenTick = align === 'sent' ? `<span class="small text-muted ms-2">${msg.read_at ? '✓✓' : '✓'}</span>` : '';
+                    chatBox.innerHTML += `<div class="message ${align}">${body}${seenTick}</div>`;
                 });
 
                 chatBox.scrollTop = chatBox.scrollHeight;
             })
             .catch(() => {
-                chatBox.innerHTML = '<div class="small text-danger">Chat unavailable for this user.</div>';
+                clearTimeout(wakeupTimer);
+                chatLoading.style.display = 'none';
+                chatWakeup.style.display = 'none';
+                chatError.style.display = 'block';
             });
     }
 
@@ -137,20 +150,33 @@
         });
     }
 
-    document.querySelectorAll('.starter-chip').forEach(function (chip) {
-        chip.addEventListener('click', function () {
-            messageInput.value = chip.getAttribute('data-message') || '';
-            messageInput.focus();
-        });
-    });
-
     form.addEventListener('submit', function (event) {
         event.preventDefault();
         sendMessage();
     });
 
-    setInterval(fetchMessages, 2500);
+    let typingTimeout = null;
+    messageInput.addEventListener('input', function () {
+        if (typingTimeout) {
+            clearTimeout(typingTimeout);
+        }
+        fetch('/chat/typing/{{ $user->id }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        });
+        typingTimeout = setTimeout(() => {}, 1200);
+    });
+
+    setInterval(fetchMessages, 4000);
     fetchMessages();
+
+    if (chatRetry) {
+        chatRetry.addEventListener('click', function () {
+            fetchMessages();
+        });
+    }
 })();
 </script>
 @endpush

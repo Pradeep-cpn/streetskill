@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 | SymfonyRequest::HEADER_X_FORWARDED_PROTO
                 | SymfonyRequest::HEADER_X_FORWARDED_PREFIX
         );
+        $middleware->appendToGroup('web', \App\Http\Middleware\UpdateLastActive::class);
         $middleware->alias([
             'primary.admin' => \App\Http\Middleware\EnsurePrimaryAdmin::class,
         ]);

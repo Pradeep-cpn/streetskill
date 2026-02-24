@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\SwapRequest;
 use App\Models\User;
+use App\Models\Notification;
 use App\Models\ActivityLog;
 use App\Services\AICompatibilityService;
 use App\Support\SkillMatchEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\RateLimiter;
 
 class SwapRequestController extends Controller
@@ -93,6 +95,20 @@ class SwapRequestController extends Controller
             'quality_score' => $qualityScore,
         ]);
 
+        if (Schema::hasTable('notifications')) {
+            Notification::create([
+                'user_id' => (int) $request->to_user_id,
+                'type' => 'swap_request_received',
+                'data' => [
+                    'from_user_id' => Auth::id(),
+                    'from_name' => $sender->name,
+                    'skill_offered' => $request->skill_offered,
+                    'skill_requested' => $request->skill_requested,
+                    'swap_request_id' => $swap->id,
+                ],
+            ]);
+        }
+
         RateLimiter::hit($rateKey, 600);
 
         if (ActivityLog::enabled()) {
@@ -159,19 +175,22 @@ class SwapRequestController extends Controller
             $responseEtaLabels[$userId] = $this->responseEtaLabel((float) ($signal['avg_response_minutes'] ?? 0));
         }
 
-        $ratedUserIds = $received
+        $swapIds = $received
             ->where('status', 'accepted')
-            ->pluck('from_user_id')
+            ->pluck('id')
+            ->merge($sent->where('status', 'accepted')->pluck('id'))
             ->unique()
             ->values()
             ->all();
 
-        $ratingsGiven = \App\Models\Rating::query()
-            ->where('from_user_id', Auth::id())
-            ->whereIn('to_user_id', $ratedUserIds)
-            ->latest()
-            ->get()
-            ->keyBy('to_user_id');
+        $ratingsGiven = $swapIds
+            ? \App\Models\Rating::query()
+                ->where('from_user_id', Auth::id())
+                ->whereIn('swap_request_id', $swapIds)
+                ->latest()
+                ->get()
+                ->keyBy('swap_request_id')
+            : collect();
 
         return view('swap.dashboard', compact(
             'received',
@@ -223,6 +242,19 @@ class SwapRequestController extends Controller
         $request->update([
             'status' => $status,
         ]);
+
+        if ($status === 'accepted' && Schema::hasTable('notifications')) {
+            $receiver = Auth::user();
+            Notification::create([
+                'user_id' => (int) $request->from_user_id,
+                'type' => 'swap_request_accepted',
+                'data' => [
+                    'by_user_id' => Auth::id(),
+                    'by_name' => $receiver?->name ?? 'User',
+                    'swap_request_id' => $request->id,
+                ],
+            ]);
+        }
 
         if (ActivityLog::enabled()) {
             ActivityLog::create([

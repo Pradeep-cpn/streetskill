@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\SwapRequest;
 use App\Models\LocationTag;
 use App\Models\SkillEndorsement;
+use App\Models\Rating;
+use App\Models\UserBlock;
 use App\Models\User;
 use App\Services\AICompatibilityService;
+use App\Support\ProfileMetrics;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -16,6 +19,7 @@ class PublicProfileController extends Controller
     {
         $user = User::query()->where('slug', $slug)->firstOrFail();
         $currentUser = Auth::user();
+        $profile = $user->profile;
 
         $completedSwaps = SwapRequest::query()
             ->where('status', 'accepted')
@@ -43,7 +47,18 @@ class PublicProfileController extends Controller
 
         $compatibility = null;
         $canChat = false;
+        $isBlocked = false;
         if ($currentUser && $currentUser->id !== $user->id) {
+            $isBlocked = UserBlock::query()
+                ->where(function ($query) use ($currentUser, $user) {
+                    $query->where('blocker_user_id', $currentUser->id)
+                        ->where('blocked_user_id', $user->id);
+                })
+                ->orWhere(function ($query) use ($currentUser, $user) {
+                    $query->where('blocker_user_id', $user->id)
+                        ->where('blocked_user_id', $currentUser->id);
+                })
+                ->exists();
             $compatibility = app(AICompatibilityService::class)->score($currentUser, $user);
             $canChat = SwapRequest::query()
                 ->where('status', 'accepted')
@@ -57,8 +72,69 @@ class PublicProfileController extends Controller
                     });
                 })
                 ->exists();
+            if ($isBlocked) {
+                $canChat = false;
+            }
         }
 
-        return view('public.profile', compact('user', 'completedSwaps', 'tags', 'endorsements', 'compatibility', 'canChat'));
+        $ratingQuery = Rating::query()
+            ->where('to_user_id', $user->id)
+            ->where('verified', true);
+
+        $verifiedCount = (int) $ratingQuery->count();
+
+        $ratingCounts = $ratingQuery
+            ->selectRaw('rating, COUNT(*) as count')
+            ->groupBy('rating')
+            ->pluck('count', 'rating')
+            ->all();
+
+        if ($verifiedCount === 0) {
+            $ratingCounts = Rating::query()
+                ->where('to_user_id', $user->id)
+                ->selectRaw('rating, COUNT(*) as count')
+                ->groupBy('rating')
+                ->pluck('count', 'rating')
+                ->all();
+        }
+
+        $ratingBreakdown = collect(range(5, 1))
+            ->map(function (int $star) use ($ratingCounts) {
+                return [
+                    'star' => $star,
+                    'count' => (int) ($ratingCounts[$star] ?? 0),
+                ];
+            })
+            ->all();
+
+        $totalRatings = array_sum($ratingCounts);
+
+        $skillRatings = Rating::query()
+            ->where('to_user_id', $user->id)
+            ->whereNotNull('skill')
+            ->where('verified', true)
+            ->selectRaw('skill, SUM(rating * weight) / NULLIF(SUM(weight), 0) as avg_rating, COUNT(*) as count')
+            ->groupBy('skill')
+            ->orderByDesc('avg_rating')
+            ->orderByDesc('count')
+            ->limit(6)
+            ->get();
+
+        $metrics = ProfileMetrics::completion($user, $profile);
+
+        return view('public.profile', compact(
+            'user',
+            'profile',
+            'completedSwaps',
+            'tags',
+            'endorsements',
+            'compatibility',
+            'canChat',
+            'ratingBreakdown',
+            'totalRatings',
+            'isBlocked',
+            'metrics',
+            'skillRatings'
+        ));
     }
 }

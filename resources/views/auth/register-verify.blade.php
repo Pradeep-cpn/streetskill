@@ -25,9 +25,36 @@
 
             <form method="POST" action="{{ route('register.resend') }}" class="mt-3">
                 @csrf
-                <button type="submit" class="btn btn-outline-light w-100">Resend OTP (60s cooldown)</button>
+                <button type="submit" class="btn btn-outline-light w-100" id="resend-otp" data-cooldown="60">Resend OTP</button>
             </form>
         </div>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    const button = document.getElementById('resend-otp');
+    if (!button) {
+        return;
+    }
+
+    let cooldown = Number(button.getAttribute('data-cooldown')) || 60;
+    let remaining = cooldown;
+    button.disabled = true;
+    button.textContent = `Resend OTP (${remaining}s)`;
+
+    const timer = setInterval(function () {
+        remaining -= 1;
+        if (remaining <= 0) {
+            clearInterval(timer);
+            button.disabled = false;
+            button.textContent = 'Resend OTP';
+            return;
+        }
+        button.textContent = `Resend OTP (${remaining}s)`;
+    }, 1000);
+})();
+</script>
+@endpush

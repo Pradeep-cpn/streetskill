@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\LocationTag;
 use App\Models\SwapRequest;
 use App\Services\AICompatibilityService;
 use App\Support\SkillMatchEngine;
@@ -16,6 +17,13 @@ class MarketplaceController extends Controller
     {
         $skill = trim((string) $request->query('skill', ''));
         $city = trim((string) $request->query('city', ''));
+        $category = trim((string) $request->query('category', ''));
+        $availabilityStatus = trim((string) $request->query('availability', ''));
+        $sort = trim((string) $request->query('sort', 'smart'));
+        $ratingMin = max(0.0, (float) $request->query('rating_min', 0));
+        $distanceKm = max(0, (int) $request->query('distance', 0));
+        $priceMin = $request->query('price_min');
+        $priceMax = $request->query('price_max');
         $q = trim((string) $request->query('q', ''));
         $prefillOffer = trim((string) $request->query('offer', ''));
         $prefillRequest = trim((string) $request->query('request', ''));
@@ -39,12 +47,20 @@ class MarketplaceController extends Controller
         $myWantedSkills = SkillMatchEngine::parseSkills($currentUser->skills_wanted);
 
         $query = User::query()
+            ->with('profile')
             ->where('id', '!=', $currentUser->id);
 
         if ($skill !== '') {
             $query->where(function ($q) use ($skill) {
                 $q->where('skills_offered', 'like', '%' . $skill . '%')
                     ->orWhere('skills_wanted', 'like', '%' . $skill . '%');
+            });
+        }
+
+        if ($category !== '') {
+            $query->where(function ($q) use ($category) {
+                $q->where('skills_offered', 'like', '%' . $category . '%')
+                    ->orWhere('skills_wanted', 'like', '%' . $category . '%');
             });
         }
 
@@ -63,8 +79,31 @@ class MarketplaceController extends Controller
 
         $compatibilityScores = app(AICompatibilityService::class)->bulkScores($currentUser, $candidates);
 
+        $locationUserIds = array_unique(array_merge($candidateIds, [$currentUser->id]));
+        $locationTags = LocationTag::query()
+            ->whereIn('user_id', $locationUserIds)
+            ->where('expires_at', '>=', now())
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn ($group) => $group->first());
+
+        $myLocationTag = $locationTags->get($currentUser->id);
+        $distanceError = null;
+        if ($distanceKm > 0 && !$myLocationTag) {
+            $distanceError = 'Add a location tag to enable distance filtering.';
+        }
+
         $ranked = $candidates
-            ->map(function (User $candidate) use ($currentUser, $fastResponderIds, $signals, $compatibilityScores, $responseEtaLabels) {
+            ->map(function (User $candidate) use (
+                $currentUser,
+                $fastResponderIds,
+                $signals,
+                $compatibilityScores,
+                $responseEtaLabels,
+                $locationTags,
+                $myLocationTag
+            ) {
                 if (empty($candidate->slug)) {
                     $candidate->slug = User::generateUniqueSlug($candidate->name);
                     $candidate->save();
@@ -87,11 +126,89 @@ class MarketplaceController extends Controller
                 $candidate->badges = $analysis['badges'];
                 $candidate->compatibility_score = $compatibilityScores[$candidate->id]['score'] ?? null;
                 $candidate->response_eta = $responseEtaLabels[$candidate->id] ?? null;
+                $candidateTag = $locationTags->get($candidate->id);
+                if ($candidate->hide_tags_until && $candidate->hide_tags_until->isFuture()) {
+                    $candidateTag = null;
+                }
+                $candidate->distance_km = $this->distanceFromUser($myLocationTag, $candidateTag);
 
                 return $candidate;
             })
+            ->filter(function (User $candidate) use ($category, $availabilityStatus, $ratingMin, $priceMin, $priceMax, $distanceKm, $distanceError) {
+                $profile = $candidate->profile;
+                if ($availabilityStatus !== '' && $availabilityStatus !== 'any') {
+                    if (!$profile || $profile->availability_status !== $availabilityStatus) {
+                        return false;
+                    }
+                }
+
+                if ($ratingMin > 0 && (float) $candidate->rating < $ratingMin) {
+                    return false;
+                }
+
+                if ($category !== '') {
+                    $categoryLower = mb_strtolower($category, 'UTF-8');
+                    $skillsOffered = mb_strtolower((string) $candidate->skills_offered, 'UTF-8');
+                    $skillsWanted = mb_strtolower((string) $candidate->skills_wanted, 'UTF-8');
+                    $tagMatch = collect($profile?->skill_tags ?? [])
+                        ->map(fn ($tag) => mb_strtolower((string) $tag, 'UTF-8'))
+                        ->contains($categoryLower);
+
+                    if (!str_contains($skillsOffered, $categoryLower) && !str_contains($skillsWanted, $categoryLower) && !$tagMatch) {
+                        return false;
+                    }
+                }
+
+                if ($priceMin !== null || $priceMax !== null) {
+                    if (!$profile || (!$profile->price_min && !$profile->price_max)) {
+                        return false;
+                    }
+                    $rangeMin = $profile->price_min ?? $profile->price_max;
+                    $rangeMax = $profile->price_max ?? $profile->price_min;
+                    $minFilter = $priceMin !== null && $priceMin !== '' ? (int) $priceMin : null;
+                    $maxFilter = $priceMax !== null && $priceMax !== '' ? (int) $priceMax : null;
+
+                    if ($minFilter !== null && $maxFilter !== null) {
+                        if ($rangeMin > $maxFilter || $rangeMax < $minFilter) {
+                            return false;
+                        }
+                    } elseif ($minFilter !== null) {
+                        if ($rangeMax < $minFilter) {
+                            return false;
+                        }
+                    } elseif ($maxFilter !== null) {
+                        if ($rangeMin > $maxFilter) {
+                            return false;
+                        }
+                    }
+                }
+
+                if ($distanceKm > 0 && !$distanceError) {
+                    if ($candidate->distance_km === null || $candidate->distance_km > $distanceKm) {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
             ->sortByDesc('smart_score')
             ->values();
+
+        if ($distanceError) {
+            $ranked = collect();
+        } elseif ($sort === 'nearest') {
+            $ranked = $ranked->sortBy(function (User $candidate) {
+                return $candidate->distance_km ?? PHP_INT_MAX;
+            })->values();
+        } elseif ($sort === 'rated') {
+            $ranked = $ranked->sortByDesc(function (User $candidate) {
+                return (float) $candidate->rating;
+            })->values();
+        } elseif ($sort === 'active') {
+            $ranked = $ranked->sortByDesc(function (User $candidate) {
+                return $candidate->last_active_at?->timestamp ?? 0;
+            })->values();
+        }
 
         $perPage = 9;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
@@ -134,12 +251,20 @@ class MarketplaceController extends Controller
             'users',
             'skill',
             'city',
+            'category',
+            'availabilityStatus',
+            'ratingMin',
+            'distanceKm',
+            'priceMin',
+            'priceMax',
+            'sort',
             'myOfferedSkills',
             'myWantedSkills',
             'marketStats',
             'trendingSkills',
             'prefillOffer',
-            'prefillRequest'
+            'prefillRequest',
+            'distanceError'
         ));
     }
 
@@ -165,5 +290,25 @@ class MarketplaceController extends Controller
         }
 
         return '48h';
+    }
+
+    private function distanceFromUser($myTag, $theirTag): ?int
+    {
+        if (!$myTag || !$theirTag) {
+            return null;
+        }
+
+        $lat1 = deg2rad((float) $myTag->lat);
+        $lon1 = deg2rad((float) $myTag->lng);
+        $lat2 = deg2rad((float) $theirTag->lat);
+        $lon2 = deg2rad((float) $theirTag->lng);
+
+        $dlat = $lat2 - $lat1;
+        $dlon = $lon2 - $lon1;
+        $a = sin($dlat / 2) ** 2 + cos($lat1) * cos($lat2) * sin($dlon / 2) ** 2;
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        $km = 6371 * $c;
+
+        return (int) round($km);
     }
 }

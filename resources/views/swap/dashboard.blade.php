@@ -84,7 +84,8 @@
                                 <div class="mt-3">
                                     <a href="{{ route('chat.page', $req->sender->id) }}" class="btn btn-glow btn-sm mb-2">Open Chat</a>
                                     @php
-                                        $existingRating = $ratingsGiven[$req->sender->id] ?? null;
+                                        $existingRating = $ratingsGiven[$req->id] ?? null;
+                                        $skillRated = $req->skill_offered;
                                     @endphp
                                     @if($existingRating)
                                         <div class="card p-3 mb-2">
@@ -98,6 +99,8 @@
                                                 @endfor
                                                 <span class="rating-value">{{ number_format((float) $existingRating->rating, 1) }}</span>
                                             </div>
+                                            <small class="d-block mb-1">Skill: {{ $existingRating->skill ?? $skillRated }}</small>
+                                            <small class="text-muted d-block mb-1">Verified review</small>
                                             @if($existingRating->review)
                                                 <p class="small mb-2">{{ $existingRating->review }}</p>
                                             @else
@@ -132,7 +135,11 @@
                                         <form method="POST" action="{{ route('rate.user') }}" class="rating-form mb-2">
                                             @csrf
                                             <input type="hidden" name="to_user_id" value="{{ $req->sender->id }}">
+                                            <input type="hidden" name="swap_request_id" value="{{ $req->id }}">
 
+                                            <div class="mb-2">
+                                                <small class="text-muted">Rating skill: {{ $skillRated }}</small>
+                                            </div>
                                             <div class="mb-2">
                                                 <select name="rating" class="form-control" required>
                                                     <option value="">Select rating</option>
@@ -213,6 +220,79 @@
                             @if($req->status === 'accepted')
                                 <div class="mt-3">
                                     <a href="{{ route('chat.page', $req->receiver->id) }}" class="btn btn-glow btn-sm">Open Chat</a>
+                                    @php
+                                        $existingRating = $ratingsGiven[$req->id] ?? null;
+                                        $skillRated = $req->skill_requested;
+                                    @endphp
+                                    @if($existingRating)
+                                        <div class="card p-3 mt-2">
+                                            <div class="rating-stars" aria-label="Rating {{ (int) $existingRating->rating }} out of 5">
+                                                @for ($i = 1; $i <= 5; $i++)
+                                                    @if($i <= (int) $existingRating->rating)
+                                                        ★
+                                                    @else
+                                                        ☆
+                                                    @endif
+                                                @endfor
+                                                <span class="rating-value">{{ number_format((float) $existingRating->rating, 1) }}</span>
+                                            </div>
+                                            <small class="d-block mb-1">Skill: {{ $existingRating->skill ?? $skillRated }}</small>
+                                            <small class="text-muted d-block mb-1">Verified review</small>
+                                            @if($existingRating->review)
+                                                <p class="small mb-2">{{ $existingRating->review }}</p>
+                                            @else
+                                                <p class="small mb-2">Rating submitted.</p>
+                                            @endif
+                                            <button type="button" class="btn btn-outline-light btn-sm js-toggle-rating" data-target="#edit-rating-sent-{{ $req->id }}">Edit Rating</button>
+                                        </div>
+
+                                        <form
+                                            id="edit-rating-sent-{{ $req->id }}"
+                                            method="POST"
+                                            action="{{ route('rate.user.update', $existingRating->id) }}"
+                                            class="rating-form mb-2 d-none"
+                                        >
+                                            @csrf
+                                            <div class="mb-2">
+                                                <select name="rating" class="form-control" required>
+                                                    <option value="">Select rating</option>
+                                                    @for ($i = 5; $i >= 1; $i--)
+                                                        <option value="{{ $i }}" {{ (int) $existingRating->rating === $i ? 'selected' : '' }}>
+                                                            {{ $i }} - {{ $i === 5 ? 'Excellent' : ($i === 4 ? 'Good' : ($i === 3 ? 'Average' : ($i === 2 ? 'Needs work' : 'Poor'))) }}
+                                                        </option>
+                                                    @endfor
+                                                </select>
+                                            </div>
+                                            <div class="mb-2">
+                                                <textarea name="review" class="form-control" placeholder="Short review (optional)" rows="2">{{ $existingRating->review ?? '' }}</textarea>
+                                            </div>
+                                            <button class="btn btn-gradient btn-sm">Update Rating</button>
+                                        </form>
+                                    @else
+                                        <form method="POST" action="{{ route('rate.user') }}" class="rating-form mt-2">
+                                            @csrf
+                                            <input type="hidden" name="to_user_id" value="{{ $req->receiver->id }}">
+                                            <input type="hidden" name="swap_request_id" value="{{ $req->id }}">
+
+                                            <div class="mb-2">
+                                                <small class="text-muted">Rating skill: {{ $skillRated }}</small>
+                                            </div>
+                                            <div class="mb-2">
+                                                <select name="rating" class="form-control" required>
+                                                    <option value="">Select rating</option>
+                                                    <option value="5">5 - Excellent</option>
+                                                    <option value="4">4 - Good</option>
+                                                    <option value="3">3 - Average</option>
+                                                    <option value="2">2 - Needs work</option>
+                                                    <option value="1">1 - Poor</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-2">
+                                                <textarea name="review" class="form-control" placeholder="Short review (optional)" rows="2"></textarea>
+                                            </div>
+                                            <button class="btn btn-gradient btn-sm">Submit Rating</button>
+                                        </form>
+                                    @endif
                                 </div>
                             @endif
 

@@ -11,6 +11,10 @@ class Message extends Model
         'to_user_id',
         'message',
         'read_at',
+        'message_type',
+        'image_path',
+        'image_mime',
+        'image_size',
     ];
 
     protected $casts = [

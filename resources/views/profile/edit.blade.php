@@ -31,6 +31,12 @@
                     <textarea name="skills_offered" class="form-control" rows="3" placeholder="Comma separated, e.g. Photoshop, Guitar, Excel">{{ old('skills_offered', $user->skills_offered) }}</textarea>
                 </div>
 
+                <div class="mb-3">
+                    <label class="form-label">Skill Tags</label>
+                    <input type="text" name="skill_tags" class="form-control" value="{{ old('skill_tags', isset($profile->skill_tags) ? implode(', ', $profile->skill_tags) : '') }}" placeholder="Add tags like Barbering, Welding, Plumbing">
+                    <small class="text-muted">These appear on your public profile as tags.</small>
+                </div>
+
                 <div class="mb-4">
                     <label class="form-label">Skills You Want to Learn</label>
                     <textarea name="skills_wanted" class="form-control" rows="3" placeholder="Comma separated, e.g. Public Speaking, Cooking">{{ old('skills_wanted', $user->skills_wanted) }}</textarea>
@@ -79,6 +85,29 @@
                     <small>Select when you are usually available for skill swaps.</small>
                 </div>
 
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label">Price Range (Min)</label>
+                        <input type="number" name="price_min" class="form-control" value="{{ old('price_min', $profile->price_min) }}" min="0" placeholder="e.g. 100">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Price Range (Max)</label>
+                        <input type="number" name="price_max" class="form-control" value="{{ old('price_max', $profile->price_max) }}" min="0" placeholder="e.g. 500">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Availability Status</label>
+                    <select name="availability_status" class="form-control">
+                        @php
+                            $currentStatus = old('availability_status', $profile->availability_status ?? 'available');
+                        @endphp
+                        <option value="available" {{ $currentStatus === 'available' ? 'selected' : '' }}>Available</option>
+                        <option value="busy" {{ $currentStatus === 'busy' ? 'selected' : '' }}>Busy</option>
+                        <option value="away" {{ $currentStatus === 'away' ? 'selected' : '' }}>Away</option>
+                    </select>
+                </div>
+
                 <button type="submit" class="btn btn-gradient">Update Profile</button>
             </form>
         </div>
@@ -86,6 +115,15 @@
     <div class="col-lg-4">
         <div class="card p-4 mb-4">
             <h3 class="h5 mb-3">Reliability Snapshot</h3>
+            <div class="mb-3">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span>Profile completion</span>
+                    <strong>{{ $metrics['completion'] ?? 0 }}%</strong>
+                </div>
+                <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar" role="progressbar" style="width: {{ $metrics['completion'] ?? 0 }}%"></div>
+                </div>
+            </div>
             <div class="profile-metrics">
                 <div class="metric-card">
                     <span>Accepted swaps</span>

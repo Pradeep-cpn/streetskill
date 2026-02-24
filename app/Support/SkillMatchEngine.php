@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Report;
+use App\Models\Rating;
 use App\Models\SwapRequest;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -26,6 +27,8 @@ class SkillMatchEngine
         $reportCount = (int) ($signals['report_count'] ?? 0);
         $avgResponseMinutes = (float) ($signals['avg_response_minutes'] ?? 0);
         $acceptedHandledCount = (int) ($signals['accepted_handled_count'] ?? 0);
+        $weightedRating = (float) ($signals['weighted_rating'] ?? $candidate->rating ?? 0);
+        $verifiedRatings = (int) ($signals['verified_rating_count'] ?? 0);
 
         $matchScore = (count($teachesYou) * 22) + (count($learnsFromYou) * 22) + (count($availabilityOverlap) * 4);
 
@@ -35,7 +38,7 @@ class SkillMatchEngine
 
         $matchScore = min(100, $matchScore);
 
-        $smartScore = ($matchScore * 0.65) + (min((float) $candidate->rating, 5) * 7);
+        $smartScore = ($matchScore * 0.65) + (min($weightedRating, 5) * 7);
 
         if ($currentUser->city && $candidate->city && strcasecmp($currentUser->city, $candidate->city) === 0) {
             $smartScore += 8;
@@ -43,8 +46,9 @@ class SkillMatchEngine
 
         $smartScore += min(count($availabilityOverlap), 3) * 4;
 
-        $trustScore = 55;
-        $trustScore += min((float) $candidate->rating, 5) * 6;
+        $trustScore = 50;
+        $trustScore += min($weightedRating, 5) * 7;
+        $trustScore += min($verifiedRatings, 6) * 2;
         $trustScore += min($acceptedHandledCount, 6) * 3;
 
         if ($avgResponseMinutes > 0) {
@@ -90,6 +94,10 @@ class SkillMatchEngine
             $badges[] = 'Swap Verified';
         }
 
+        if ($verifiedRatings >= 3) {
+            $badges[] = 'Verified Reviews';
+        }
+
         if (!empty($candidate->verified_badge)) {
             $badgeLabel = match ($candidate->verified_badge) {
                 'verified' => 'Verified Mentor',
@@ -133,15 +141,25 @@ class SkillMatchEngine
             ->get()
             ->keyBy('to_user_id');
 
+        $ratingStats = Rating::query()
+            ->whereIn('to_user_id', $candidateUserIds)
+            ->selectRaw('to_user_id, SUM(rating * weight) / NULLIF(SUM(weight), 0) as weighted_rating, SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) as verified_count')
+            ->groupBy('to_user_id')
+            ->get()
+            ->keyBy('to_user_id');
+
         $signals = [];
 
         foreach ($candidateUserIds as $id) {
             $row = $responseStats->get($id);
+            $ratingRow = $ratingStats->get($id);
 
             $signals[(int) $id] = [
                 'report_count' => (int) ($reportCounts[$id] ?? 0),
                 'avg_response_minutes' => $row ? (float) $row->avg_minutes : 0,
                 'accepted_handled_count' => $row ? (int) $row->accepted_count : 0,
+                'weighted_rating' => $ratingRow ? (float) $ratingRow->weighted_rating : 0,
+                'verified_rating_count' => $ratingRow ? (int) $ratingRow->verified_count : 0,
             ];
         }
 

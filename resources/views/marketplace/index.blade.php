@@ -49,15 +49,74 @@
 
 <form method="GET" action="{{ route('marketplace') }}" class="card p-3 p-md-4 mb-4">
     <div class="row g-3 align-items-end">
-        <div class="col-md-5">
+        <div class="col-md-4">
             <label for="skill" class="form-label">Skill</label>
             <input id="skill" type="text" name="skill" class="form-control" value="{{ $skill }}" placeholder="e.g. Guitar, Excel, UI Design">
         </div>
-        <div class="col-md-5">
+        <div class="col-md-4">
             <label for="city" class="form-label">City</label>
             <input id="city" type="text" name="city" class="form-control" value="{{ $city }}" placeholder="e.g. New York">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-4">
+            <label for="category" class="form-label">Skill Tag</label>
+            <input id="category" type="text" name="category" class="form-control" value="{{ $category }}" placeholder="e.g. Plumbing, Welding">
+        </div>
+    </div>
+
+    <div class="row g-3 align-items-end mt-1">
+        <div class="col-md-3">
+            <label for="distance" class="form-label">Distance (km)</label>
+            <select id="distance" name="distance" class="form-control">
+                @php
+                    $distanceValue = (int) $distanceKm;
+                @endphp
+                <option value="0" {{ $distanceValue === 0 ? 'selected' : '' }}>Any</option>
+                <option value="5" {{ $distanceValue === 5 ? 'selected' : '' }}>5 km</option>
+                <option value="10" {{ $distanceValue === 10 ? 'selected' : '' }}>10 km</option>
+                <option value="25" {{ $distanceValue === 25 ? 'selected' : '' }}>25 km</option>
+                <option value="50" {{ $distanceValue === 50 ? 'selected' : '' }}>50 km</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="rating_min" class="form-label">Min Rating</label>
+            <select id="rating_min" name="rating_min" class="form-control">
+                <option value="0" {{ (float) $ratingMin === 0.0 ? 'selected' : '' }}>Any</option>
+                <option value="3" {{ (float) $ratingMin === 3.0 ? 'selected' : '' }}>3.0+</option>
+                <option value="3.5" {{ (float) $ratingMin === 3.5 ? 'selected' : '' }}>3.5+</option>
+                <option value="4" {{ (float) $ratingMin === 4.0 ? 'selected' : '' }}>4.0+</option>
+                <option value="4.5" {{ (float) $ratingMin === 4.5 ? 'selected' : '' }}>4.5+</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="availability" class="form-label">Availability</label>
+            <select id="availability" name="availability" class="form-control">
+                <option value="any" {{ $availabilityStatus === 'any' || $availabilityStatus === '' ? 'selected' : '' }}>Any</option>
+                <option value="available" {{ $availabilityStatus === 'available' ? 'selected' : '' }}>Available</option>
+                <option value="busy" {{ $availabilityStatus === 'busy' ? 'selected' : '' }}>Busy</option>
+                <option value="away" {{ $availabilityStatus === 'away' ? 'selected' : '' }}>Away</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="sort" class="form-label">Sort</label>
+            <select id="sort" name="sort" class="form-control">
+                <option value="smart" {{ $sort === 'smart' ? 'selected' : '' }}>Smart</option>
+                <option value="nearest" {{ $sort === 'nearest' ? 'selected' : '' }}>Nearest</option>
+                <option value="rated" {{ $sort === 'rated' ? 'selected' : '' }}>Highest Rated</option>
+                <option value="active" {{ $sort === 'active' ? 'selected' : '' }}>Most Active</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row g-3 align-items-end mt-1">
+        <div class="col-md-3">
+            <label for="price_min" class="form-label">Price Min</label>
+            <input id="price_min" type="number" name="price_min" class="form-control" value="{{ $priceMin }}" min="0" placeholder="e.g. 100">
+        </div>
+        <div class="col-md-3">
+            <label for="price_max" class="form-label">Price Max</label>
+            <input id="price_max" type="number" name="price_max" class="form-control" value="{{ $priceMax }}" min="0" placeholder="e.g. 500">
+        </div>
+        <div class="col-md-6">
             <div class="d-flex gap-2 align-items-center h-100 marketplace-actions">
                 <button class="btn btn-gradient w-100">Search</button>
                 <a href="{{ route('marketplace') }}" class="btn btn-outline-light w-100">Clear</a>
@@ -72,6 +131,13 @@
         </div>
     @endif
 </form>
+
+@if(!empty($distanceError))
+    <div class="alert alert-warning app-alert" role="alert">
+        {{ $distanceError }} Share your location on the map to enable this filter.
+        <a href="{{ route('map.index') }}" class="alert-link">Open map</a>
+    </div>
+@endif
 
 @if($users->count() === 0)
     <div class="card p-4 text-center">
@@ -92,6 +158,18 @@
                             </div>
                         </div>
                         <span class="match-chip">{{ $user->match_score }}%</span>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        @if($user->email_verified_at)
+                            <span class="badge-pill">Email Verified</span>
+                        @endif
+                        @if(!empty($user->profile?->availability_status))
+                            <span class="badge-pill">{{ ucfirst($user->profile->availability_status) }}</span>
+                        @endif
+                        @if(!is_null($user->distance_km))
+                            <span class="badge-pill">{{ $user->distance_km }} km away</span>
+                        @endif
                     </div>
 
                     @if(!is_null($user->compatibility_score))
@@ -122,6 +200,14 @@
                         <span class="rating-value">{{ number_format((float) $user->rating, 1) }}</span>
                     </div>
 
+                    @if(!empty($user->profile?->skill_tags))
+                        <div class="d-flex flex-wrap gap-1 mb-2">
+                            @foreach(array_slice($user->profile->skill_tags, 0, 4) as $tag)
+                                <span class="badge-pill">{{ ucfirst($tag) }}</span>
+                            @endforeach
+                        </div>
+                    @endif
+
                     <button class="btn btn-outline-light btn-sm mb-3 js-more-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#user-more-{{ $user->id }}" aria-expanded="false" aria-controls="user-more-{{ $user->id }}">
                         More
                     </button>
@@ -141,6 +227,12 @@
                         <div class="info-stack mb-3">
                             <p><strong>Teaches:</strong> {{ $user->skills_offered ?: 'Not added yet' }}</p>
                             <p><strong>Wants to learn:</strong> {{ $user->skills_wanted ?: 'Not added yet' }}</p>
+                            @if($user->profile?->price_min || $user->profile?->price_max)
+                                <p><strong>Price:</strong> Rs {{ $user->profile->price_min ?? 'N/A' }} to Rs {{ $user->profile->price_max ?? 'N/A' }}</p>
+                            @endif
+                            @if($user->last_active_at)
+                                <p><strong>Last active:</strong> {{ $user->last_active_at->diffForHumans() }}</p>
+                            @endif
                         </div>
 
                         <div class="match-box mb-3">

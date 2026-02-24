@@ -33,6 +33,7 @@ class User extends Authenticatable
         'youtube_url',
         'verified_badge',
         'verification_requested_at',
+        'last_active_at',
     ];
 
     /**
@@ -57,7 +58,13 @@ class User extends Authenticatable
             'portfolio_links' => 'array',
             'verification_requested_at' => 'datetime',
             'hide_tags_until' => 'datetime',
+            'last_active_at' => 'datetime',
         ];
+    }
+
+    public function profile()
+    {
+        return $this->hasOne(Profile::class);
     }
 
     public function activityLogs()

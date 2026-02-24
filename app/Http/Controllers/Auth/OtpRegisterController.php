@@ -63,7 +63,11 @@ class OtpRegisterController extends Controller
             'expires_at' => now()->addMinutes(10),
         ]);
 
-        Mail::to($email)->send(new OtpCodeMail($code, 'register', 10));
+        try {
+            Mail::to($email)->send(new OtpCodeMail($code, 'register', 10));
+        } catch (\Throwable $e) {
+            logger()->error('Mail failed: ' . $e->getMessage());
+        }
         RateLimiter::hit($rateKey, 60);
 
         $request->session()->put('register.email', $email);
@@ -101,7 +105,11 @@ class OtpRegisterController extends Controller
             'expires_at' => now()->addMinutes(10),
         ]);
 
-        Mail::to($email)->send(new OtpCodeMail($code, 'register', 10));
+        try {
+            Mail::to($email)->send(new OtpCodeMail($code, 'register', 10));
+        } catch (\Throwable $e) {
+            logger()->error('Mail failed: ' . $e->getMessage());
+        }
         RateLimiter::hit($rateKey, 60);
 
         return back()->with('success', 'OTP resent to your email.');

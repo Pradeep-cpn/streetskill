@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>{{ trim($__env->yieldContent('title')) ? trim($__env->yieldContent('title')).' | StreetSkill' : 'StreetSkill' }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     @yield('meta')
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -11,7 +12,6 @@
     <link rel="stylesheet" href="{{ secure_asset('css/style.css') }}">
 </head>
 <body>
-<div id="particles-js"></div>
 <div class="animated-bg"></div>
 
 @php
@@ -160,7 +160,6 @@
     </div>
 </nav>
 
-@auth
 <div class="offcanvas offcanvas-end mobile-drawer d-lg-none" tabindex="-1" id="mobileNavDrawer" aria-labelledby="mobileNavDrawerLabel">
     <div class="offcanvas-header">
         <h5 class="offcanvas-title" id="mobileNavDrawerLabel">StreetSkill</h5>
@@ -168,34 +167,38 @@
     </div>
     <div class="offcanvas-body">
         <div class="d-grid gap-2">
-            <a href="{{ route('marketplace') }}" class="btn btn-glow {{ $currentRoute === 'marketplace' ? 'is-active' : '' }}">Marketplace</a>
-            <a href="{{ route('feed.index') }}" class="btn btn-glow {{ $currentRoute === 'feed.index' ? 'is-active' : '' }}">Feed</a>
-            <a href="{{ route('challenges.index') }}" class="btn btn-glow {{ $currentRoute === 'challenges.index' ? 'is-active' : '' }}">Challenges</a>
-            <a href="{{ route('roadmaps.index') }}" class="btn btn-glow {{ $currentRoute === 'roadmaps.index' ? 'is-active' : '' }}">Roadmaps</a>
-            <a href="{{ route('rooms.index') }}" class="btn btn-glow {{ $currentRoute === 'rooms.index' ? 'is-active' : '' }}">Rooms</a>
-            <a href="{{ route('map.index') }}" class="btn btn-glow {{ $currentRoute === 'map.index' ? 'is-active' : '' }}">Map</a>
-            <a href="{{ route('connections.index') }}" class="btn btn-glow {{ $currentRoute === 'connections.index' ? 'is-active' : '' }}">Connections</a>
-            <a href="{{ route('requests.dashboard') }}" class="btn btn-glow {{ $currentRoute === 'requests.dashboard' ? 'is-active' : '' }}">Requests</a>
-            <div class="btn btn-glow position-relative">
-                Notifications
-                @if(($notificationCount ?? 0) > 0)
-                    <span class="badge bg-warning text-dark notification-badge">{{ $notificationCount }}</span>
+            @auth
+                <a href="{{ route('marketplace') }}" class="btn btn-glow {{ $currentRoute === 'marketplace' ? 'is-active' : '' }}">Marketplace</a>
+                <a href="{{ route('feed.index') }}" class="btn btn-glow {{ $currentRoute === 'feed.index' ? 'is-active' : '' }}">Feed</a>
+                <a href="{{ route('challenges.index') }}" class="btn btn-glow {{ $currentRoute === 'challenges.index' ? 'is-active' : '' }}">Challenges</a>
+                <a href="{{ route('roadmaps.index') }}" class="btn btn-glow {{ $currentRoute === 'roadmaps.index' ? 'is-active' : '' }}">Roadmaps</a>
+                <a href="{{ route('rooms.index') }}" class="btn btn-glow {{ $currentRoute === 'rooms.index' ? 'is-active' : '' }}">Rooms</a>
+                <a href="{{ route('map.index') }}" class="btn btn-glow {{ $currentRoute === 'map.index' ? 'is-active' : '' }}">Map</a>
+                <a href="{{ route('connections.index') }}" class="btn btn-glow {{ $currentRoute === 'connections.index' ? 'is-active' : '' }}">Connections</a>
+                <a href="{{ route('requests.dashboard') }}" class="btn btn-glow {{ $currentRoute === 'requests.dashboard' ? 'is-active' : '' }}">Requests</a>
+                <div class="btn btn-glow position-relative">
+                    Notifications
+                    @if(($notificationCount ?? 0) > 0)
+                        <span class="badge bg-warning text-dark notification-badge">{{ $notificationCount }}</span>
+                    @endif
+                </div>
+                <a href="{{ route('chat.inbox') }}" class="btn btn-glow {{ $currentRoute === 'chat.inbox' ? 'is-active' : '' }}">Inbox</a>
+                <a href="{{ route('profile.edit') }}" class="btn btn-glow {{ $currentRoute === 'profile.edit' ? 'is-active' : '' }}">Profile</a>
+                @if($isPrimaryAdmin ?? false)
+                    <a href="{{ route('admin.analytics.index') }}" class="btn btn-glow {{ $currentRoute === 'admin.analytics.index' ? 'is-active' : '' }}">Analytics</a>
+                    <a href="{{ route('admin.reports.index') }}" class="btn btn-glow {{ $currentRoute === 'admin.reports.index' ? 'is-active' : '' }}">Moderation</a>
                 @endif
-            </div>
-            <a href="{{ route('chat.inbox') }}" class="btn btn-glow {{ $currentRoute === 'chat.inbox' ? 'is-active' : '' }}">Inbox</a>
-            <a href="{{ route('profile.edit') }}" class="btn btn-glow {{ $currentRoute === 'profile.edit' ? 'is-active' : '' }}">Profile</a>
-            @if($isPrimaryAdmin ?? false)
-                <a href="{{ route('admin.analytics.index') }}" class="btn btn-glow {{ $currentRoute === 'admin.analytics.index' ? 'is-active' : '' }}">Analytics</a>
-                <a href="{{ route('admin.reports.index') }}" class="btn btn-glow {{ $currentRoute === 'admin.reports.index' ? 'is-active' : '' }}">Moderation</a>
-            @endif
-            <form action="{{ route('logout') }}" method="POST" class="d-grid">
-                @csrf
-                <button class="btn btn-danger btn-sm">Logout</button>
-            </form>
+                <form action="{{ route('logout') }}" method="POST" class="d-grid">
+                    @csrf
+                    <button class="btn btn-danger btn-sm">Logout</button>
+                </form>
+            @else
+                <a href="{{ route('login') }}" class="btn btn-glow">Login</a>
+                <a href="{{ route('register') }}" class="btn btn-gradient">Register</a>
+            @endauth
         </div>
     </div>
 </div>
-@endauth
 
 <div class="container content-area {{ $currentRoute === 'chat.page' ? 'content-chat' : '' }}">
     @if(session('success'))
@@ -220,38 +223,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/particles.js"></script>
-<script>
-(function () {
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const isMobile = window.matchMedia('(max-width: 768px)').matches;
-
-    if (reduceMotion && window.particlesJS) {
-        document.getElementById('particles-js').style.display = 'none';
-        return;
-    }
-
-    if (window.particlesJS) {
-        particlesJS('particles-js', {
-            particles: {
-                number: { value: isMobile ? 28 : 60 },
-                color: { value: '#00ffff' },
-                shape: { type: 'circle' },
-                opacity: { value: 0.35 },
-                size: { value: 2.5 },
-                line_linked: {
-                    enable: true,
-                    distance: isMobile ? 110 : 150,
-                    color: '#00ffff',
-                    opacity: 0.16,
-                    width: 1
-                },
-                move: { enable: true, speed: isMobile ? 1.2 : 2 }
-            }
-        });
-    }
-})();
-</script>
 
 @stack('scripts')
 <script>

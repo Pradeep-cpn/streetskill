@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class LoginController extends Controller
 {
@@ -50,12 +51,33 @@ class LoginController extends Controller
 
     protected function authenticated(Request $request, $user)
     {
-        $sessionTable = config('session.table', 'sessions');
         $currentSessionId = $request->session()->getId();
+
+        if (Schema::hasColumn('users', 'current_session_id')) {
+            $user->forceFill(['current_session_id' => $currentSessionId])->save();
+        }
+
+        $sessionTable = config('session.table', 'sessions');
 
         DB::table($sessionTable)
             ->where('user_id', $user->id)
             ->where('id', '!=', $currentSessionId)
             ->delete();
+    }
+
+    public function logout(Request $request)
+    {
+        $user = $request->user();
+
+        $this->guard()->logout();
+
+        if ($user && Schema::hasColumn('users', 'current_session_id')) {
+            $user->forceFill(['current_session_id' => null])->save();
+        }
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return $this->loggedOut($request) ?: redirect('/');
     }
 }

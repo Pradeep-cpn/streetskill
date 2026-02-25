@@ -56,6 +56,10 @@ Route::get('/home', [HomeController::class, 'index'])->name('home');
 Route::get('/user/{slug}', [PublicProfileController::class, 'show'])->name('public.profile');
 
 Route::middleware(['auth'])->group(function () {
+    Route::get('/session/ping', function () {
+        return response()->noContent();
+    })->name('session.ping');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');

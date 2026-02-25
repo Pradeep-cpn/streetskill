@@ -8,7 +8,7 @@
     @yield('meta')
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ secure_asset('css/style.css') }}">
 </head>
 <body>
@@ -227,6 +227,19 @@
 @stack('scripts')
 <script>
 (function () {
+    @auth
+    const sessionCheck = () => {
+        fetch('{{ route('session.ping') }}', {
+            headers: { 'Accept': 'application/json' }
+        }).then((res) => {
+            if (res.status === 401) {
+                window.location = '/';
+            }
+        }).catch(() => {});
+    };
+    setInterval(sessionCheck, 10000);
+    @endauth
+
     const nav = document.querySelector('.glass-nav');
     if (nav) {
         const onScroll = () => {

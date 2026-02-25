@@ -21,6 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 | SymfonyRequest::HEADER_X_FORWARDED_PROTO
                 | SymfonyRequest::HEADER_X_FORWARDED_PREFIX
         );
+        $middleware->validateCsrfTokens(except: [
+            'logout',
+        ]);
         $middleware->appendToGroup('web', \App\Http\Middleware\UpdateLastActive::class);
         $middleware->appendToGroup('web', \App\Http\Middleware\EnforceSingleSession::class);
         $middleware->alias([

@@ -8,7 +8,7 @@
     @yield('meta')
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ secure_asset('css/style.css') }}">
 </head>
 <body>
@@ -18,6 +18,24 @@
     $currentRoute = \Illuminate\Support\Facades\Route::currentRouteName();
     $exploreRoutes = ['challenges.index', 'roadmaps.index', 'rooms.index'];
     $socialRoutes = ['map.index', 'connections.index'];
+    $routeLabels = [
+        'home' => ['Home'],
+        'landing' => ['Home'],
+        'marketplace' => ['Marketplace'],
+        'feed.index' => ['Feed'],
+        'requests.dashboard' => ['Requests'],
+        'chat.inbox' => ['Inbox'],
+        'chat.page' => ['Inbox', 'Chat'],
+        'profile.edit' => ['Profile', 'Edit'],
+        'challenges.index' => ['Challenges'],
+        'roadmaps.index' => ['Roadmaps'],
+        'rooms.index' => ['Rooms'],
+        'map.index' => ['Map'],
+        'connections.index' => ['Connections'],
+        'admin.analytics.index' => ['Admin', 'Analytics'],
+        'admin.reports.index' => ['Admin', 'Moderation'],
+    ];
+    $crumbs = $routeLabels[$currentRoute] ?? ['StreetSkill'];
 @endphp
 
 <nav class="navbar navbar-expand-lg navbar-dark glass-nav">
@@ -47,18 +65,9 @@
                         Explore
                     </button>
                     <ul class="dropdown-menu dropdown-menu-dark glass-dropdown">
-                        <li><a class="dropdown-item" href="{{ route('challenges.index') }}">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M12 3l2.2 4.4L19 8l-3.5 3.4.8 4.8L12 14.8 7.7 16.2l.8-4.8L5 8l4.8-.6L12 3z" stroke="currentColor" stroke-width="1.6"/></svg>
-                            Challenges
-                        </a></li>
-                        <li><a class="dropdown-item" href="{{ route('roadmaps.index') }}">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h10M4 18h16" stroke="currentColor" stroke-width="1.6"/></svg>
-                            Roadmaps
-                        </a></li>
-                        <li><a class="dropdown-item" href="{{ route('rooms.index') }}">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M4 7h16v10H4z" stroke="currentColor" stroke-width="1.6"/><path d="M8 7v10M16 7v10" stroke="currentColor" stroke-width="1.6"/></svg>
-                            Rooms
-                        </a></li>
+                        <li><a class="dropdown-item" href="{{ route('challenges.index') }}">Challenges</a></li>
+                        <li><a class="dropdown-item" href="{{ route('roadmaps.index') }}">Roadmaps</a></li>
+                        <li><a class="dropdown-item" href="{{ route('rooms.index') }}">Rooms</a></li>
                     </ul>
                 </div>
 
@@ -67,14 +76,8 @@
                         Social
                     </button>
                     <ul class="dropdown-menu dropdown-menu-dark glass-dropdown">
-                        <li><a class="dropdown-item" href="{{ route('map.index') }}">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M4 6l6-2 4 2 6-2v14l-6 2-4-2-6 2V6z" stroke="currentColor" stroke-width="1.6"/></svg>
-                            Map
-                        </a></li>
-                        <li><a class="dropdown-item" href="{{ route('connections.index') }}">
-                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM17 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM4 22v-2a4 4 0 0 1 4-4h2M14 16h2a4 4 0 0 1 4 4v2" stroke="currentColor" stroke-width="1.6"/></svg>
-                            Connections
-                        </a></li>
+                        <li><a class="dropdown-item" href="{{ route('map.index') }}">Map</a></li>
+                        <li><a class="dropdown-item" href="{{ route('connections.index') }}">Connections</a></li>
                     </ul>
                 </div>
                 <a href="{{ route('requests.dashboard') }}" class="btn btn-glow position-relative me-2 mb-2 mb-lg-0 {{ $currentRoute === 'requests.dashboard' ? 'is-active' : '' }}">
@@ -134,18 +137,11 @@
                         <span class="badge bg-info notification-badge">{{ $unreadMessageCount }}</span>
                     @endif
                 </a>
-                <a href="{{ route('profile.edit') }}" class="btn btn-glow me-2 mb-2 mb-lg-0 {{ $currentRoute === 'profile.edit' ? 'is-active' : '' }}">Profile</a>
+                <a href="{{ route('profile.edit') }}" class="btn btn-gradient me-2 mb-2 mb-lg-0 {{ $currentRoute === 'profile.edit' ? 'is-active' : '' }}">Profile</a>
 
                 @if($isPrimaryAdmin ?? false)
-                    <a href="{{ route('admin.analytics.index') }}" class="btn btn-glow me-2 mb-2 mb-lg-0 {{ $currentRoute === 'admin.analytics.index' ? 'is-active' : '' }}">
-                        Analytics
-                    </a>
-                    <a href="{{ route('admin.reports.index') }}" class="btn btn-glow position-relative me-2 mb-2 mb-lg-0 {{ $currentRoute === 'admin.reports.index' ? 'is-active' : '' }}">
-                        Moderation
-                        @if(($openReportCount ?? 0) > 0)
-                            <span class="badge bg-warning text-dark notification-badge">{{ $openReportCount }}</span>
-                        @endif
-                    </a>
+                    <a href="{{ route('admin.analytics.index') }}" class="btn btn-glow me-2 mb-2 mb-lg-0 {{ $currentRoute === 'admin.analytics.index' ? 'is-active' : '' }}">Analytics</a>
+                    <a href="{{ route('admin.reports.index') }}" class="btn btn-glow position-relative me-2 mb-2 mb-lg-0 {{ $currentRoute === 'admin.reports.index' ? 'is-active' : '' }}">Moderation</a>
                 @endif
 
                 <form action="{{ route('logout') }}" method="POST" class="d-inline mb-2 mb-lg-0">
@@ -160,45 +156,45 @@
     </div>
 </nav>
 
-<div class="offcanvas offcanvas-end mobile-drawer d-lg-none" tabindex="-1" id="mobileNavDrawer" aria-labelledby="mobileNavDrawerLabel">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="mobileNavDrawerLabel">StreetSkill</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body">
-        <div class="d-grid gap-2">
-            @auth
-                <a href="{{ route('marketplace') }}" class="btn btn-glow {{ $currentRoute === 'marketplace' ? 'is-active' : '' }}">Marketplace</a>
-                <a href="{{ route('feed.index') }}" class="btn btn-glow {{ $currentRoute === 'feed.index' ? 'is-active' : '' }}">Feed</a>
-                <a href="{{ route('challenges.index') }}" class="btn btn-glow {{ $currentRoute === 'challenges.index' ? 'is-active' : '' }}">Challenges</a>
-                <a href="{{ route('roadmaps.index') }}" class="btn btn-glow {{ $currentRoute === 'roadmaps.index' ? 'is-active' : '' }}">Roadmaps</a>
-                <a href="{{ route('rooms.index') }}" class="btn btn-glow {{ $currentRoute === 'rooms.index' ? 'is-active' : '' }}">Rooms</a>
-                <a href="{{ route('map.index') }}" class="btn btn-glow {{ $currentRoute === 'map.index' ? 'is-active' : '' }}">Map</a>
-                <a href="{{ route('connections.index') }}" class="btn btn-glow {{ $currentRoute === 'connections.index' ? 'is-active' : '' }}">Connections</a>
-                <a href="{{ route('requests.dashboard') }}" class="btn btn-glow {{ $currentRoute === 'requests.dashboard' ? 'is-active' : '' }}">Requests</a>
-                <div class="btn btn-glow position-relative">
-                    Notifications
-                    @if(($notificationCount ?? 0) > 0)
-                        <span class="badge bg-warning text-dark notification-badge">{{ $notificationCount }}</span>
-                    @endif
+        <div class="offcanvas offcanvas-end mobile-drawer d-lg-none" tabindex="-1" id="mobileNavDrawer" aria-labelledby="mobileNavDrawerLabel">
+            <div class="offcanvas-header">
+                <h5 class="offcanvas-title" id="mobileNavDrawerLabel">StreetSkill</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body">
+                <div class="d-grid gap-2">
+                    @auth
+                        <a href="{{ route('marketplace') }}" class="btn btn-glow {{ $currentRoute === 'marketplace' ? 'is-active' : '' }}">Marketplace</a>
+                        <a href="{{ route('feed.index') }}" class="btn btn-glow {{ $currentRoute === 'feed.index' ? 'is-active' : '' }}">Feed</a>
+                        <a href="{{ route('challenges.index') }}" class="btn btn-glow {{ $currentRoute === 'challenges.index' ? 'is-active' : '' }}">Challenges</a>
+                        <a href="{{ route('roadmaps.index') }}" class="btn btn-glow {{ $currentRoute === 'roadmaps.index' ? 'is-active' : '' }}">Roadmaps</a>
+                        <a href="{{ route('rooms.index') }}" class="btn btn-glow {{ $currentRoute === 'rooms.index' ? 'is-active' : '' }}">Rooms</a>
+                        <a href="{{ route('map.index') }}" class="btn btn-glow {{ $currentRoute === 'map.index' ? 'is-active' : '' }}">Map</a>
+                        <a href="{{ route('connections.index') }}" class="btn btn-glow {{ $currentRoute === 'connections.index' ? 'is-active' : '' }}">Connections</a>
+                        <a href="{{ route('requests.dashboard') }}" class="btn btn-glow {{ $currentRoute === 'requests.dashboard' ? 'is-active' : '' }}">Requests</a>
+                        <div class="btn btn-glow position-relative">
+                            Notifications
+                            @if(($notificationCount ?? 0) > 0)
+                                <span class="badge bg-warning text-dark notification-badge">{{ $notificationCount }}</span>
+                            @endif
+                        </div>
+                        <a href="{{ route('chat.inbox') }}" class="btn btn-glow {{ $currentRoute === 'chat.inbox' ? 'is-active' : '' }}">Inbox</a>
+                        <a href="{{ route('profile.edit') }}" class="btn btn-glow {{ $currentRoute === 'profile.edit' ? 'is-active' : '' }}">Profile</a>
+                        @if($isPrimaryAdmin ?? false)
+                            <a href="{{ route('admin.analytics.index') }}" class="btn btn-glow {{ $currentRoute === 'admin.analytics.index' ? 'is-active' : '' }}">Analytics</a>
+                            <a href="{{ route('admin.reports.index') }}" class="btn btn-glow {{ $currentRoute === 'admin.reports.index' ? 'is-active' : '' }}">Moderation</a>
+                        @endif
+                        <form action="{{ route('logout') }}" method="POST" class="d-grid">
+                            @csrf
+                            <button class="btn btn-danger btn-sm">Logout</button>
+                        </form>
+                    @else
+                        <a href="{{ route('login') }}" class="btn btn-glow">Login</a>
+                        <a href="{{ route('register') }}" class="btn btn-gradient">Register</a>
+                    @endauth
                 </div>
-                <a href="{{ route('chat.inbox') }}" class="btn btn-glow {{ $currentRoute === 'chat.inbox' ? 'is-active' : '' }}">Inbox</a>
-                <a href="{{ route('profile.edit') }}" class="btn btn-glow {{ $currentRoute === 'profile.edit' ? 'is-active' : '' }}">Profile</a>
-                @if($isPrimaryAdmin ?? false)
-                    <a href="{{ route('admin.analytics.index') }}" class="btn btn-glow {{ $currentRoute === 'admin.analytics.index' ? 'is-active' : '' }}">Analytics</a>
-                    <a href="{{ route('admin.reports.index') }}" class="btn btn-glow {{ $currentRoute === 'admin.reports.index' ? 'is-active' : '' }}">Moderation</a>
-                @endif
-                <form action="{{ route('logout') }}" method="POST" class="d-grid">
-                    @csrf
-                    <button class="btn btn-danger btn-sm">Logout</button>
-                </form>
-            @else
-                <a href="{{ route('login') }}" class="btn btn-glow">Login</a>
-                <a href="{{ route('register') }}" class="btn btn-gradient">Register</a>
-            @endauth
+            </div>
         </div>
-    </div>
-</div>
 
 <div class="container content-area {{ $currentRoute === 'chat.page' ? 'content-chat' : '' }}">
     @if(session('success'))
@@ -240,14 +236,6 @@
     setInterval(sessionCheck, 10000);
     @endauth
 
-    const nav = document.querySelector('.glass-nav');
-    if (nav) {
-        const onScroll = () => {
-            nav.classList.toggle('compact', window.scrollY > 24);
-        };
-        onScroll();
-        window.addEventListener('scroll', onScroll, { passive: true });
-    }
     document.querySelectorAll('[data-toggle-password]').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const target = btn.getAttribute('data-target');

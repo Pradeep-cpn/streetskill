@@ -193,31 +193,4 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/verification/{user}/badge', [\App\Http\Controllers\Admin\AdminVerificationController::class, 'update'])->name('verification.update');
     });
 
-    Route::get('/debug/session', function (\Illuminate\Http\Request $request) {
-        $token = (string) env('DEBUG_SESSION_TOKEN', '');
-        $provided = (string) $request->query('token', '');
-
-        if ($token === '' || !hash_equals($token, $provided)) {
-            abort(404);
-        }
-
-        $driver = config('session.driver');
-        $sessionId = session()->getId();
-        $cookieName = config('session.cookie');
-        $sessionTable = config('session.table', 'sessions');
-        $rowExists = null;
-
-        if ($driver === 'database') {
-            $rowExists = \Illuminate\Support\Facades\DB::table($sessionTable)
-                ->where('id', $sessionId)
-                ->exists();
-        }
-
-        return response()->json([
-            'driver' => $driver,
-            'session_id' => $sessionId,
-            'cookie' => $cookieName,
-            'db_row' => $rowExists,
-        ]);
-    })->middleware('auth');
 });

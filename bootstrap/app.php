@@ -29,6 +29,14 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (TokenMismatchException $e, $request) {
+            if ($request->is('logout')) {
+                auth()->logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return redirect('/');
+            }
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => 'Session expired. Please refresh and try again.',

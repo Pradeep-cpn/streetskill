@@ -24,8 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'logout',
         ]);
+        $middleware->prependToGroup('web', \App\Http\Middleware\EnforceSingleSession::class);
         $middleware->appendToGroup('web', \App\Http\Middleware\UpdateLastActive::class);
-        $middleware->appendToGroup('web', \App\Http\Middleware\EnforceSingleSession::class);
         $middleware->alias([
             'primary.admin' => \App\Http\Middleware\EnsurePrimaryAdmin::class,
         ]);

@@ -35,6 +35,24 @@
     $currentRoute = \Illuminate\Support\Facades\Route::currentRouteName();
     $exploreRoutes = ['challenges.index', 'roadmaps.index', 'rooms.index'];
     $socialRoutes = ['map.index', 'connections.index'];
+    $routeLabels = [
+        'home' => ['Home'],
+        'landing' => ['Home'],
+        'marketplace' => ['Marketplace'],
+        'feed.index' => ['Feed'],
+        'requests.dashboard' => ['Requests'],
+        'chat.inbox' => ['Inbox'],
+        'chat.page' => ['Inbox', 'Chat'],
+        'profile.edit' => ['Profile', 'Edit'],
+        'challenges.index' => ['Challenges'],
+        'roadmaps.index' => ['Roadmaps'],
+        'rooms.index' => ['Rooms'],
+        'map.index' => ['Map'],
+        'connections.index' => ['Connections'],
+        'admin.analytics.index' => ['Admin', 'Analytics'],
+        'admin.reports.index' => ['Admin', 'Moderation'],
+    ];
+    $crumbs = $routeLabels[$currentRoute] ?? ['StreetSkill'];
 @endphp
 
 <nav class="navbar navbar-expand-lg glass-nav">
@@ -151,18 +169,11 @@
                         <span class="badge bg-info notification-badge">{{ $unreadMessageCount }}</span>
                     @endif
                 </a>
-                <a href="{{ route('profile.edit') }}" class="btn btn-glow me-2 mb-2 mb-lg-0 {{ $currentRoute === 'profile.edit' ? 'is-active' : '' }}">Profile</a>
+                <a href="{{ route('profile.edit') }}" class="btn btn-gradient me-2 mb-2 mb-lg-0 {{ $currentRoute === 'profile.edit' ? 'is-active' : '' }}">Profile</a>
 
                 @if($isPrimaryAdmin ?? false)
-                    <a href="{{ route('admin.analytics.index') }}" class="btn btn-glow me-2 mb-2 mb-lg-0 {{ $currentRoute === 'admin.analytics.index' ? 'is-active' : '' }}">
-                        Analytics
-                    </a>
-                    <a href="{{ route('admin.reports.index') }}" class="btn btn-glow position-relative me-2 mb-2 mb-lg-0 {{ $currentRoute === 'admin.reports.index' ? 'is-active' : '' }}">
-                        Moderation
-                        @if(($openReportCount ?? 0) > 0)
-                            <span class="badge bg-warning text-dark notification-badge">{{ $openReportCount }}</span>
-                        @endif
-                    </a>
+                    <a href="{{ route('admin.analytics.index') }}" class="btn btn-glow me-2 mb-2 mb-lg-0 {{ $currentRoute === 'admin.analytics.index' ? 'is-active' : '' }}">Analytics</a>
+                    <a href="{{ route('admin.reports.index') }}" class="btn btn-glow position-relative me-2 mb-2 mb-lg-0 {{ $currentRoute === 'admin.reports.index' ? 'is-active' : '' }}">Moderation</a>
                 @endif
 
                 <form action="{{ route('logout') }}" method="POST" class="d-inline mb-2 mb-lg-0">
@@ -200,14 +211,14 @@
                     @endif
                 </div>
                 <a href="{{ route('chat.inbox') }}" class="btn btn-glow {{ $currentRoute === 'chat.inbox' ? 'is-active' : '' }}">Inbox</a>
-                <a href="{{ route('profile.edit') }}" class="btn btn-glow {{ $currentRoute === 'profile.edit' ? 'is-active' : '' }}">Profile</a>
+                <a href="{{ route('profile.edit') }}" class="btn btn-gradient {{ $currentRoute === 'profile.edit' ? 'is-active' : '' }}">Profile</a>
                 @if($isPrimaryAdmin ?? false)
                     <a href="{{ route('admin.analytics.index') }}" class="btn btn-glow {{ $currentRoute === 'admin.analytics.index' ? 'is-active' : '' }}">Analytics</a>
                     <a href="{{ route('admin.reports.index') }}" class="btn btn-glow {{ $currentRoute === 'admin.reports.index' ? 'is-active' : '' }}">Moderation</a>
                 @endif
-                <form action="{{ route('logout') }}" method="POST" class="d-grid">
+                <form action="{{ route('logout') }}" method="POST">
                     @csrf
-                    <button class="btn btn-danger btn-sm">Logout</button>
+                    <button class="btn btn-danger w-100">Logout</button>
                 </form>
             @else
                 <a href="{{ route('login') }}" class="btn btn-glow">Login</a>
@@ -257,14 +268,6 @@
     setInterval(sessionCheck, 10000);
     @endauth
 
-    const nav = document.querySelector('.glass-nav');
-    if (nav) {
-        const onScroll = () => {
-            nav.classList.toggle('compact', window.scrollY > 24);
-        };
-        onScroll();
-        window.addEventListener('scroll', onScroll, { passive: true });
-    }
     document.querySelectorAll('[data-toggle-password]').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const target = btn.getAttribute('data-target');

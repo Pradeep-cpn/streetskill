@@ -106,7 +106,6 @@ class MarketplaceController extends Controller
             ) {
                 if (empty($candidate->slug)) {
                     $candidate->slug = User::generateUniqueSlug($candidate->name);
-                    $candidate->save();
                 }
                 $analysis = SkillMatchEngine::analyze(
                     $currentUser,

@@ -31,5 +31,11 @@ RUN chmod -R 777 storage bootstrap/cache
 EXPOSE 10000
 
 # Render provides $PORT; fall back to 10000 for local runs.
-# Run the web server; run migrations manually from Render shell when needed.
-CMD php artisan migrate --force || true && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}
+# Warm Laravel caches at container start so no manual shell step is required.
+CMD php artisan optimize:clear || true \
+    && php artisan config:cache || true \
+    && php artisan route:cache || true \
+    && php artisan view:cache || true \
+    && php artisan event:cache || true \
+    && php artisan migrate --force || true \
+    && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}

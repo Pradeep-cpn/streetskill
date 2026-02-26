@@ -90,7 +90,6 @@ class HomeController extends Controller
                 ->map(function (User $candidate) use ($currentUser, $fastResponderIds, $signals) {
                     if (empty($candidate->slug)) {
                         $candidate->slug = User::generateUniqueSlug($candidate->name);
-                        $candidate->save();
                     }
                     $analysis = SkillMatchEngine::analyze(
                         $currentUser,
@@ -239,12 +238,12 @@ class HomeController extends Controller
                 ->where('rating', '>', 0)
                 ->avg('rating');
 
-            $fastestMatchMinutes = SwapRequest::query()
+            $fastestMatchMinutes = (int) (SwapRequest::query()
                 ->where('status', 'accepted')
-                ->get(['created_at', 'updated_at'])
-                ->map(fn (SwapRequest $request) => $request->created_at?->diffInMinutes($request->updated_at) ?? null)
-                ->filter()
-                ->min();
+                ->whereNotNull('created_at')
+                ->whereNotNull('updated_at')
+                ->selectRaw('MIN(TIMESTAMPDIFF(MINUTE, created_at, updated_at)) as fastest_minutes')
+                ->value('fastest_minutes') ?? 0);
 
             $fastestMatchLabel = $fastestMatchMinutes
                 ? ($fastestMatchMinutes < 60 ? $fastestMatchMinutes . 'm' : (int) ceil($fastestMatchMinutes / 60) . 'h')
@@ -361,11 +360,9 @@ class HomeController extends Controller
 
             $fastResponses = SwapRequest::query()
                 ->whereIn('status', ['accepted', 'rejected'])
-                ->get(['created_at', 'updated_at'])
-                ->filter(fn (SwapRequest $request) => $request->created_at && $request->updated_at)
-                ->filter(function (SwapRequest $request) {
-                    return $request->created_at->diffInMinutes($request->updated_at) <= 240;
-                })
+                ->whereNotNull('created_at')
+                ->whereNotNull('updated_at')
+                ->whereRaw('TIMESTAMPDIFF(MINUTE, created_at, updated_at) <= 240')
                 ->count();
 
             return [

@@ -11,6 +11,7 @@ use App\Models\UserBlock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
@@ -33,24 +34,46 @@ class MessageController extends Controller
             ->unique()
             ->values();
 
-        $contacts = User::query()->whereIn('id', $contactIds)->get(['id', 'name', 'city']);
+        $contacts = User::query()
+            ->whereIn('id', $contactIds)
+            ->get(['id', 'name', 'city']);
 
-        $threads = $contacts->map(function (User $contact) use ($myId) {
-            $lastMessage = Message::query()
-                ->where(function ($q) use ($myId, $contact) {
-                    $q->where('from_user_id', $myId)->where('to_user_id', $contact->id);
-                })
-                ->orWhere(function ($q) use ($myId, $contact) {
-                    $q->where('from_user_id', $contact->id)->where('to_user_id', $myId);
-                })
-                ->latest()
-                ->first();
+        if ($contactIds->isEmpty()) {
+            return view('chat.inbox', ['threads' => collect()]);
+        }
 
-            $unreadCount = Message::query()
-                ->where('from_user_id', $contact->id)
-                ->where('to_user_id', $myId)
-                ->whereNull('read_at')
-                ->count();
+        $latestMessageIds = Message::query()
+            ->selectRaw('MAX(id) as id')
+            ->where(function ($q) use ($myId, $contactIds) {
+                $q->where('from_user_id', $myId)->whereIn('to_user_id', $contactIds);
+            })
+            ->orWhere(function ($q) use ($myId, $contactIds) {
+                $q->whereIn('from_user_id', $contactIds)->where('to_user_id', $myId);
+            })
+            ->groupBy(DB::raw("CASE WHEN from_user_id = {$myId} THEN to_user_id ELSE from_user_id END"))
+            ->pluck('id')
+            ->all();
+
+        $lastMessagesByContact = Message::query()
+            ->whereIn('id', $latestMessageIds)
+            ->get()
+            ->keyBy(function (Message $message) use ($myId) {
+                return (int) $message->from_user_id === (int) $myId
+                    ? (int) $message->to_user_id
+                    : (int) $message->from_user_id;
+            });
+
+        $unreadCountsByContact = Message::query()
+            ->selectRaw('from_user_id, COUNT(*) as unread_count')
+            ->whereIn('from_user_id', $contactIds)
+            ->where('to_user_id', $myId)
+            ->whereNull('read_at')
+            ->groupBy('from_user_id')
+            ->pluck('unread_count', 'from_user_id');
+
+        $threads = $contacts->map(function (User $contact) use ($lastMessagesByContact, $unreadCountsByContact) {
+            $lastMessage = $lastMessagesByContact->get((int) $contact->id);
+            $unreadCount = (int) ($unreadCountsByContact[(int) $contact->id] ?? 0);
 
             return [
                 'contact' => $contact,

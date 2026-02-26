@@ -96,14 +96,14 @@
 
     const myIcon = L.divIcon({
         className: 'custom-pin',
-        html: '<div style="width:14px;height:14px;border-radius:50%;background:#00deff;border:2px solid #fff;box-shadow:0 0 8px rgba(0,222,255,0.8)"></div>',
+        html: '<div style="width:14px;height:14px;border-radius:50%;background:#2d8c75;border:2px solid #fff;box-shadow:0 0 0 2px rgba(45,140,117,0.2)"></div>',
         iconSize: [18, 18],
         iconAnchor: [9, 9]
     });
 
     const friendIcon = L.divIcon({
         className: 'custom-pin',
-        html: '<div style="width:14px;height:14px;border-radius:50%;background:#ff7bd5;border:2px solid #fff;box-shadow:0 0 8px rgba(230,54,255,0.6)"></div>',
+        html: '<div style="width:14px;height:14px;border-radius:50%;background:#5b7db1;border:2px solid #fff;box-shadow:0 0 0 2px rgba(91,125,177,0.2)"></div>',
         iconSize: [18, 18],
         iconAnchor: [9, 9]
     });

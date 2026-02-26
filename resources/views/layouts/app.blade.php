@@ -5,14 +5,31 @@
     <title>{{ trim($__env->yieldContent('title')) ? trim($__env->yieldContent('title')).' | StreetSkill' : 'StreetSkill' }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/Browser-logo.png?v=4">
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/Browser-logo.png?v=4">
+    <link rel="shortcut icon" href="/images/Browser-logo.png?v=4">
+    <link rel="apple-touch-icon" href="/images/Browser-logo.png?v=4">
     @yield('meta')
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ secure_asset('css/style.css') }}">
+    <link rel="stylesheet" href="/css/style.css?v={{ @filemtime(public_path('css/style.css')) ?: time() }}">
+    <style>
+        .card::before,
+        .card::after,
+        .hero.card::before,
+        .hero.card::after,
+        [class*="card"]::before,
+        [class*="card"]::after {
+            content: none !important;
+            display: none !important;
+            border: 0 !important;
+            background: none !important;
+            box-shadow: none !important;
+        }
+    </style>
 </head>
 <body>
-<div class="animated-bg"></div>
 
 @php
     $currentRoute = \Illuminate\Support\Facades\Route::currentRouteName();
@@ -20,8 +37,8 @@
     $socialRoutes = ['map.index', 'connections.index'];
 @endphp
 
-<nav class="navbar navbar-expand-lg navbar-dark glass-nav">
-    <div class="container-fluid">
+<nav class="navbar navbar-expand-lg glass-nav">
+    <div class="container-fluid px-3 px-lg-4">
         <div class="d-flex align-items-center gap-3 flex-grow-1">
             <a class="navbar-brand d-flex align-items-center gap-2 mb-0" href="{{ url('/') }}">
                 <img src="/images/logo.png" alt="StreetSkill" height="40" loading="eager">
@@ -46,7 +63,7 @@
                     <button class="btn btn-glow dropdown-toggle {{ in_array($currentRoute, $exploreRoutes, true) ? 'is-active' : '' }}" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Explore
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-dark glass-dropdown">
+                    <ul class="dropdown-menu glass-dropdown">
                         <li><a class="dropdown-item" href="{{ route('challenges.index') }}">
                             <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M12 3l2.2 4.4L19 8l-3.5 3.4.8 4.8L12 14.8 7.7 16.2l.8-4.8L5 8l4.8-.6L12 3z" stroke="currentColor" stroke-width="1.6"/></svg>
                             Challenges
@@ -66,7 +83,7 @@
                     <button class="btn btn-glow dropdown-toggle {{ in_array($currentRoute, $socialRoutes, true) ? 'is-active' : '' }}" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Social
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-dark glass-dropdown">
+                    <ul class="dropdown-menu glass-dropdown">
                         <li><a class="dropdown-item" href="{{ route('map.index') }}">
                             <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M4 6l6-2 4 2 6-2v14l-6 2-4-2-6 2V6z" stroke="currentColor" stroke-width="1.6"/></svg>
                             Map
@@ -90,7 +107,7 @@
                             <span class="badge bg-warning text-dark notification-badge">{{ $notificationCount }}</span>
                         @endif
                     </button>
-                    <div class="dropdown-menu dropdown-menu-dark glass-dropdown p-2" style="min-width: 320px;">
+                    <div class="dropdown-menu glass-dropdown p-2" style="min-width: 320px;">
                         <div class="d-flex align-items-center justify-content-between mb-2">
                             <strong class="small">Recent</strong>
                             <form method="POST" action="{{ route('notifications.readAll') }}">
@@ -163,7 +180,7 @@
 <div class="offcanvas offcanvas-end mobile-drawer d-lg-none" tabindex="-1" id="mobileNavDrawer" aria-labelledby="mobileNavDrawerLabel">
     <div class="offcanvas-header">
         <h5 class="offcanvas-title" id="mobileNavDrawerLabel">StreetSkill</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
         <div class="d-grid gap-2">
@@ -200,7 +217,7 @@
     </div>
 </div>
 
-<div class="container content-area {{ $currentRoute === 'chat.page' ? 'content-chat' : '' }}">
+<div class="container-xl content-area {{ $currentRoute === 'chat.page' ? 'content-chat' : '' }}">
     @if(session('success'))
         <div class="alert alert-success app-alert" role="alert">
             {{ session('success') }}

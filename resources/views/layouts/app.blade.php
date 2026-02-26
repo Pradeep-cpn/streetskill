@@ -191,7 +191,7 @@
 <div class="offcanvas offcanvas-end mobile-drawer d-lg-none" tabindex="-1" id="mobileNavDrawer" aria-labelledby="mobileNavDrawerLabel">
     <div class="offcanvas-header">
         <h5 class="offcanvas-title" id="mobileNavDrawerLabel">StreetSkill</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
         <div class="d-grid gap-2">
@@ -283,6 +283,16 @@
             btn.classList.toggle('is-visible', !isVisible);
         });
     });
+
+    const mobileDrawer = document.getElementById('mobileNavDrawer');
+    if (mobileDrawer) {
+        const drawerInstance = bootstrap.Offcanvas.getOrCreateInstance(mobileDrawer);
+        mobileDrawer.querySelectorAll('a, button[type=\"submit\"], button:not([data-bs-dismiss])').forEach(function (el) {
+            el.addEventListener('click', function () {
+                drawerInstance.hide();
+            });
+        });
+    }
 })();
 </script>
 </body>

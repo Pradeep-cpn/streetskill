@@ -250,6 +250,10 @@
     @yield('content')
 </div>
 
+<div id="route-loader" class="route-loader" aria-hidden="true">
+    <div class="route-loader__spinner" role="status" aria-label="Loading"></div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 @stack('scripts')
@@ -293,6 +297,69 @@
             });
         });
     }
+
+    const routeLoader = document.getElementById('route-loader');
+    const showRouteLoader = function () {
+        if (routeLoader) {
+            routeLoader.classList.add('is-visible');
+        }
+    };
+    const hideRouteLoader = function () {
+        if (routeLoader) {
+            routeLoader.classList.remove('is-visible');
+        }
+    };
+
+    window.addEventListener('load', hideRouteLoader);
+    window.addEventListener('pageshow', hideRouteLoader);
+
+    document.addEventListener('click', function (event) {
+        const link = event.target.closest('a[href]');
+        if (!link) {
+            return;
+        }
+        if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+            return;
+        }
+        if (link.hasAttribute('download') || link.target === '_blank' || link.dataset.noLoader !== undefined) {
+            return;
+        }
+        const href = link.getAttribute('href') || '';
+        if (
+            href === '' ||
+            href.startsWith('#') ||
+            href.startsWith('javascript:') ||
+            href.startsWith('mailto:') ||
+            href.startsWith('tel:')
+        ) {
+            return;
+        }
+        if (link.dataset.bsToggle) {
+            return;
+        }
+
+        const url = new URL(link.href, window.location.origin);
+        if (url.origin !== window.location.origin) {
+            return;
+        }
+        const current = new URL(window.location.href);
+        if (url.pathname === current.pathname && url.search === current.search && url.hash === current.hash) {
+            return;
+        }
+
+        showRouteLoader();
+    });
+
+    document.addEventListener('submit', function (event) {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+        if (form.target === '_blank' || form.dataset.noLoader !== undefined) {
+            return;
+        }
+        showRouteLoader();
+    }, true);
 })();
 </script>
 </body>

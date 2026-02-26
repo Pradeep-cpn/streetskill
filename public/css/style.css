@@ -1918,3 +1918,28 @@ select.form-control:focus {
         justify-content: center;
     }
 }
+
+/* Unified button look across all pages */
+.btn:not(.btn-close) {
+    border-radius: var(--radius-pill);
+    border: 1px solid rgba(31, 182, 233, 0.75) !important;
+    background: linear-gradient(110deg, #1fb6e9 0%, #62d8ff 100%) !important;
+    color: #052321 !important;
+    box-shadow: 0 10px 22px rgba(8, 20, 36, 0.28);
+}
+
+.btn:not(.btn-close):hover,
+.btn:not(.btn-close):focus,
+.btn:not(.btn-close).is-active,
+.btn:not(.btn-close).is-active:hover,
+.btn:not(.btn-close).is-active:focus {
+    border-color: #62d8ff !important;
+    background: linear-gradient(110deg, #28bff3 0%, #73deff 100%) !important;
+    color: #f4fbff !important;
+    filter: brightness(1.03);
+}
+
+.btn.btn-link:not(.btn-close) {
+    text-decoration: none;
+}
+

@@ -8,6 +8,7 @@ use App\Models\SwapRequest;
 use App\Models\User;
 use App\Models\ActivityLog;
 use App\Models\UserBlock;
+use App\Support\SkillMatchEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -84,6 +85,53 @@ class MessageController extends Controller
         })->sortByDesc('updated_at')->values();
 
         return view('chat.inbox', compact('threads'));
+    }
+
+    public function show(int $id)
+    {
+        $user = User::query()->findOrFail($id);
+        abort_unless($this->canChatWith($id), 403);
+
+        $sharedSwapCount = SwapRequest::query()
+            ->where('status', 'accepted')
+            ->where(function ($query) use ($id) {
+                $query->where(function ($q) use ($id) {
+                    $q->where('from_user_id', auth()->id())
+                        ->where('to_user_id', $id);
+                })->orWhere(function ($q) use ($id) {
+                    $q->where('from_user_id', $id)
+                        ->where('to_user_id', auth()->id());
+                });
+            })
+            ->count();
+
+        $lastSwapAt = SwapRequest::query()
+            ->where('status', 'accepted')
+            ->where(function ($query) use ($id) {
+                $query->where(function ($q) use ($id) {
+                    $q->where('from_user_id', auth()->id())
+                        ->where('to_user_id', $id);
+                })->orWhere(function ($q) use ($id) {
+                    $q->where('from_user_id', $id)
+                        ->where('to_user_id', auth()->id());
+                });
+            })
+            ->latest('updated_at')
+            ->value('updated_at');
+
+        $fastResponderIds = SkillMatchEngine::fastResponderUserIds([$user->id]);
+        $signals = SkillMatchEngine::userSignals([$user->id]);
+        $analysis = SkillMatchEngine::analyze(
+            auth()->user(),
+            $user,
+            $fastResponderIds,
+            $signals[$user->id] ?? []
+        );
+
+        $user->trust_score = $analysis['trust_score'];
+        $user->badges = $analysis['badges'];
+
+        return view('chat.index', compact('user', 'sharedSwapCount', 'lastSwapAt'));
     }
 
     public function send(Request $request)

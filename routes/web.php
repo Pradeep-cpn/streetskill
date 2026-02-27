@@ -56,9 +56,7 @@ Route::get('/home', [HomeController::class, 'index'])->name('home');
 Route::get('/user/{slug}', [PublicProfileController::class, 'show'])->name('public.profile');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/session/ping', function () {
-        return response()->noContent();
-    })->name('session.ping');
+    Route::get('/session/ping', [HomeController::class, 'sessionPing'])->name('session.ping');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -116,79 +114,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/send', [MessageController::class, 'send']);
     Route::post('/chat/typing/{id}', [MessageController::class, 'typing']);
     Route::get('/chat/fetch/{id}', [MessageController::class, 'fetch']);
-    Route::get('/chat/{id}', function ($id) {
-        $user = \App\Models\User::findOrFail($id);
-        $currentUser = auth()->user();
-
-        $isBlocked = \App\Models\UserBlock::query()
-            ->where(function ($query) use ($currentUser, $user) {
-                $query->where('blocker_user_id', $currentUser->id)
-                    ->where('blocked_user_id', $user->id);
-            })
-            ->orWhere(function ($query) use ($currentUser, $user) {
-                $query->where('blocker_user_id', $user->id)
-                    ->where('blocked_user_id', $currentUser->id);
-            })
-            ->exists();
-
-        abort_if($isBlocked, 403);
-
-        $canChat = \App\Models\SwapRequest::query()
-            ->where('status', 'accepted')
-            ->where(function ($query) use ($id) {
-                $query->where(function ($q) use ($id) {
-                    $q->where('from_user_id', auth()->id())
-                        ->where('to_user_id', $id);
-                })->orWhere(function ($q) use ($id) {
-                    $q->where('from_user_id', $id)
-                        ->where('to_user_id', auth()->id());
-                });
-            })
-            ->exists();
-
-        abort_unless($canChat, 403);
-
-        $sharedSwapCount = \App\Models\SwapRequest::query()
-            ->where('status', 'accepted')
-            ->where(function ($query) use ($id) {
-                $query->where(function ($q) use ($id) {
-                    $q->where('from_user_id', auth()->id())
-                        ->where('to_user_id', $id);
-                })->orWhere(function ($q) use ($id) {
-                    $q->where('from_user_id', $id)
-                        ->where('to_user_id', auth()->id());
-                });
-            })
-            ->count();
-
-        $lastSwapAt = \App\Models\SwapRequest::query()
-            ->where('status', 'accepted')
-            ->where(function ($query) use ($id) {
-                $query->where(function ($q) use ($id) {
-                    $q->where('from_user_id', auth()->id())
-                        ->where('to_user_id', $id);
-                })->orWhere(function ($q) use ($id) {
-                    $q->where('from_user_id', $id)
-                        ->where('to_user_id', auth()->id());
-                });
-            })
-            ->latest('updated_at')
-            ->value('updated_at');
-
-        $fastResponderIds = \App\Support\SkillMatchEngine::fastResponderUserIds([$user->id]);
-        $signals = \App\Support\SkillMatchEngine::userSignals([$user->id]);
-        $analysis = \App\Support\SkillMatchEngine::analyze(
-            $currentUser,
-            $user,
-            $fastResponderIds,
-            $signals[$user->id] ?? []
-        );
-
-        $user->trust_score = $analysis['trust_score'];
-        $user->badges = $analysis['badges'];
-
-        return view('chat.index', compact('user', 'sharedSwapCount', 'lastSwapAt'));
-    })->name('chat.page');
+    Route::get('/chat/{id}', [MessageController::class, 'show'])->name('chat.page');
 
     Route::prefix('admin')->name('admin.')->middleware('primary.admin')->group(function () {
         Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics.index');

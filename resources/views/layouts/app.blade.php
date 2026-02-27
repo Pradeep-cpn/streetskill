@@ -11,8 +11,19 @@
     <link rel="apple-touch-icon" href="/images/Browser-logo.png?v=4">
     @yield('meta')
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+        media="print"
+        onload="this.media='all'"
+    >
+    <noscript>
+        <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    </noscript>
     <link rel="stylesheet" href="/css/style.css?v={{ @filemtime(public_path('css/style.css')) ?: time() }}">
     <style>
         .card::before,
@@ -59,7 +70,7 @@
     <div class="container-fluid px-3 px-lg-4">
         <div class="d-flex align-items-center gap-3 flex-grow-1">
             <a class="navbar-brand d-flex align-items-center gap-2 mb-0" href="{{ url('/') }}">
-                <img src="/images/logo.png" alt="StreetSkill" height="40" loading="eager">
+                <img src="/images/logo.png" alt="StreetSkill" width="160" height="40" loading="eager">
             </a>
             @auth
                 <form method="GET" action="{{ route('marketplace') }}" class="nav-search mb-2 mb-lg-0">
@@ -254,7 +265,7 @@
     <div class="route-loader__spinner" role="status" aria-label="Loading"></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
 
 @stack('scripts')
 <script>

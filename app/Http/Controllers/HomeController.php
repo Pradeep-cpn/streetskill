@@ -15,8 +15,14 @@ use Illuminate\Support\Facades\Schema;
 
 class HomeController extends Controller
 {
+    public function sessionPing()
+    {
+        return response()->noContent();
+    }
+
     public function index()
     {
+        $isAuthenticated = Auth::check();
         $suggestedUsers = collect();
         $feedUsers = collect();
         $profileCompletion = null;
@@ -26,18 +32,22 @@ class HomeController extends Controller
         $learningTracks = [];
         $nextBestAction = null;
         $weeklyPlan = [];
-        $trendPicks = $this->buildTrendPicks();
-        $communityEvents = $this->buildCommunityEvents();
-        $reliabilitySignals = $this->buildReliabilitySignals();
-        $stats = $this->buildStats();
+        $trendPicks = null;
+        $communityEvents = null;
+        $reliabilitySignals = null;
+        $stats = null;
         $microChallenges = [];
         $streak = [
             'days' => 0,
             'boost' => 0,
         ];
 
-        if (Auth::check()) {
+        if ($isAuthenticated) {
             $currentUser = Auth::user();
+            $trendPicks = $this->buildTrendPicks();
+            $communityEvents = $this->buildCommunityEvents();
+            $reliabilitySignals = $this->buildReliabilitySignals();
+            $stats = $this->buildStats();
             $myOfferedSkills = SkillMatchEngine::parseSkills($currentUser->skills_offered);
             $myWantedSkills = SkillMatchEngine::parseSkills($currentUser->skills_wanted);
             $myAvailability = SkillMatchEngine::parseAvailability($currentUser->availability_slots);
@@ -199,7 +209,7 @@ class HomeController extends Controller
             $streak = $this->buildStreak($currentUser->id);
         }
 
-        return view('home', compact(
+        $response = response()->view('home', compact(
             'suggestedUsers',
             'feedUsers',
             'profileCompletion',
@@ -216,6 +226,12 @@ class HomeController extends Controller
             'stats',
             'streak'
         ));
+
+        if (!$isAuthenticated) {
+            $response->header('Cache-Control', 'public, max-age=120, s-maxage=300');
+        }
+
+        return $response;
     }
 
     private function buildStats(): array

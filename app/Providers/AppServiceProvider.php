@@ -52,7 +52,13 @@ class AppServiceProvider extends ServiceProvider
 
                     $notificationCount = 0;
                     $notifications = collect();
-                    if (Schema::hasTable('notifications')) {
+                    $hasNotificationsTable = Cache::remember(
+                        'schema:notifications:exists',
+                        now()->addHours(6),
+                        fn () => Schema::hasTable('notifications')
+                    );
+
+                    if ($hasNotificationsTable) {
                         $notificationCount = Notification::query()
                             ->where('user_id', $userId)
                             ->whereNull('read_at')
